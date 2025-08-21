@@ -1,0 +1,15 @@
+npm install express mongoose cors body-parser bcryptjs jsonwebtoken 
+npm install bcryptjs
+
+npm install react-native-circular-progress react-native-svg
+
+npx expo install react-dom react-native-web @expo/metro-runtime
+
+
+
+
+npm install @react-navigation/native @react-navigation/native-stack
+npm install react-native-screens react-native-safe-area-context
+npm install react-native-vector-icons
+npm install react-native-community/datetimepicker
+npm install react-native-calendars
