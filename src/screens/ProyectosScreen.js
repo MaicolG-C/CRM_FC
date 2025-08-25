@@ -23,30 +23,30 @@ const DatePickerModal = ({ isVisible, onClose, onDateSelect }) => {
     const getCalendarGrid = () => {
         const startOfMonth = date.clone().startOf('month'); const endOfMonth = date.clone().endOf('month'); const startOfGrid = startOfMonth.clone().startOf('week'); const endOfGrid = endOfMonth.clone().endOf('week'); const grid = []; let day = startOfGrid.clone(); while (day.isSameOrBefore(endOfGrid, 'day')) { grid.push(day.clone()); day.add(1, 'day'); } return grid;
     };
-    return ( <Modal animationType="fade" transparent={true} visible={isVisible} onRequestClose={onClose}><View style={styles.centeredView}><View style={styles.datePickerModalView}><View style={styles.datePickerNavigation}><TouchableOpacity onPress={() => setDate(date.clone().subtract(1, 'month'))}><Text style={styles.datePickerNavButton}>{"←"}</Text></TouchableOpacity><Text style={styles.datePickerMonthYear}>{date.format('MMMM, YYYY')}</Text><TouchableOpacity onPress={() => setDate(date.clone().add(1, 'month'))}><Text style={styles.datePickerNavButton}>{"→"}</Text></TouchableOpacity></View><View style={styles.dayNamesContainer}>{moment.weekdaysShort().map(day => <Text key={day} style={styles.dayName}>{day}</Text>)}</View><View style={styles.datePickerGridContainer}>{getCalendarGrid().map((day, index) => (<TouchableOpacity key={index} style={[styles.datePickerDay, !day.isSame(date, 'month') && styles.dayCellOutsideMonth]} onPress={() => onDateSelect(day)}><Text style={styles.dayText}>{day.date()}</Text></TouchableOpacity>))}</View><Pressable style={[styles.button, styles.buttonClose]} onPress={onClose}><Text style={styles.textStyle}>Cancelar</Text></Pressable></View></View></Modal> );
+    return (<Modal animationType="fade" transparent={true} visible={isVisible} onRequestClose={onClose}><View style={styles.centeredView}><View style={styles.datePickerModalView}><View style={styles.datePickerNavigation}><TouchableOpacity onPress={() => setDate(date.clone().subtract(1, 'month'))}><Text style={styles.datePickerNavButton}>{"←"}</Text></TouchableOpacity><Text style={styles.datePickerMonthYear}>{date.format('MMMM, YYYY')}</Text><TouchableOpacity onPress={() => setDate(date.clone().add(1, 'month'))}><Text style={styles.datePickerNavButton}>{"→"}</Text></TouchableOpacity></View><View style={styles.dayNamesContainer}>{moment.weekdaysShort().map(day => <Text key={day} style={styles.dayName}>{day}</Text>)}</View><View style={styles.datePickerGridContainer}>{getCalendarGrid().map((day, index) => (<TouchableOpacity key={index} style={[styles.datePickerDay, !day.isSame(date, 'month') && styles.dayCellOutsideMonth]} onPress={() => onDateSelect(day)}><Text style={styles.dayText}>{day.date()}</Text></TouchableOpacity>))}</View><Pressable style={[styles.button, styles.buttonClose]} onPress={onClose}><Text style={styles.textStyle}>Cancelar</Text></Pressable></View></View></Modal>);
 };
 
 const ProyectosScreen = ({ initialProjectId }) => {
-  const { projects, addProject, addTaskToProject, updateTask } = useProjects();
-  const { employees } = useEmployees();
-  const { addNotification } = useNotifications();
-  
-  const userListForPicker = [...employees.map(emp => emp.name), 'Sin Asignar'];
+    const { projects, addProject, addTaskToProject, updateTask } = useProjects();
+    const { employees } = useEmployees();
+    const { addNotification } = useNotifications();
 
-  const [addProjectModalVisible, setAddProjectModalVisible] = useState(false);
-  const [taskDetailsModalVisible, setTaskDetailsModalVisible] = useState(false);
-  const [editTaskModalVisible, setEditTaskModalVisible] = useState(false);
-  const [addTaskModalVisible, setAddTaskModalVisible] = useState(false);
-  const [currentTask, setCurrentTask] = useState(null);
-  const [viewMode, setViewMode] = useState('kanban');
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [filterPriority, setFilterPriority] = useState('Todas');
-  const [newProjectData, setNewProjectData] = useState({ name: '', code: '', description: '' });
-  const [newTaskData, setNewTaskData] = useState({ name: '', assignee: 'Sin Asignar', priority: 'Media', estimated: 1, description: '', startDate: moment().format('YYYY-MM-DD'), endDate: moment().add(1, 'days').format('YYYY-MM-DD'), });
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [isDatePickerModalVisible, setDatePickerModalVisible] = useState(false);
-  const [dateType, setDateType] = useState(null);
-  const [errors, setErrors] = useState({});
+    const userListForPicker = [...employees.map(emp => emp.name), 'Sin Asignar'];
+
+    const [addProjectModalVisible, setAddProjectModalVisible] = useState(false);
+    const [taskDetailsModalVisible, setTaskDetailsModalVisible] = useState(false);
+    const [editTaskModalVisible, setEditTaskModalVisible] = useState(false);
+    const [addTaskModalVisible, setAddTaskModalVisible] = useState(false);
+    const [currentTask, setCurrentTask] = useState(null);
+    const [viewMode, setViewMode] = useState('kanban');
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [filterPriority, setFilterPriority] = useState('Todas');
+    const [newProjectData, setNewProjectData] = useState({ name: '', code: '', description: '' });
+    const [newTaskData, setNewTaskData] = useState({ name: '', assignee: 'Sin Asignar', priority: 'Media', estimated: 1, description: '', startDate: moment().format('YYYY-MM-DD'), endDate: moment().add(1, 'days').format('YYYY-MM-DD'), });
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [isDatePickerModalVisible, setDatePickerModalVisible] = useState(false);
+    const [dateType, setDateType] = useState(null);
+    const [errors, setErrors] = useState({});
 
     useEffect(() => {
         if (initialProjectId) {
@@ -62,7 +62,21 @@ const ProyectosScreen = ({ initialProjectId }) => {
             setSelectedProject(projects[0] || null);
         }
     }, [initialProjectId, projects]);
-  
+    useEffect(() => {
+        // Este efecto "vigila" la lista de proyectos del contexto.
+        // Si la lista cambia (ej: al mover una tarea), este código se ejecuta.
+        if (selectedProject) {
+            // Busca la versión más actualizada del proyecto que tenemos seleccionado.
+            const updatedProjectFromContext = projects.find(p => p.id === selectedProject.id);
+
+            // Si la encuentra, actualiza nuestro estado local 'selectedProject' con los datos frescos.
+            if (updatedProjectFromContext) {
+                setSelectedProject(updatedProjectFromContext);
+            }
+        }
+    }, [projects]);
+
+
     const onDrop = (newStatus) => {
         if (!selectedTask) return;
         const updatedTask = { ...selectedTask, status: newStatus };
@@ -73,8 +87,8 @@ const ProyectosScreen = ({ initialProjectId }) => {
 
     const handleAddProjectInternal = () => {
         if (!newProjectData.name.trim()) {
-          setErrors({ name: 'El nombre del proyecto es obligatorio.' });
-          return;
+            setErrors({ name: 'El nombre del proyecto es obligatorio.' });
+            return;
         }
         setErrors({});
         const addedProject = addProject(newProjectData);
@@ -92,7 +106,7 @@ const ProyectosScreen = ({ initialProjectId }) => {
         addNotification({ name: 'Sistema', activity: `La tarea "${currentTask.name}" fue actualizada.` });
         setEditTaskModalVisible(false);
     };
-    
+
     const handleAddTask = () => {
         if (!newTaskData.name.trim()) {
             setErrors({ newTaskName: 'El nombre de la tarea es obligatorio.' });
@@ -103,53 +117,53 @@ const ProyectosScreen = ({ initialProjectId }) => {
         addNotification({ name: 'Proyectos', activity: `Nueva tarea "${addedTask.name}" añadida a "${selectedProject.name}".` });
         setAddTaskModalVisible(false);
     };
-    
+
     const openAddTaskModal = () => {
         setErrors({});
         setNewTaskData({ name: '', assignee: 'Sin Asignar', priority: 'Media', estimated: 1, description: '', startDate: moment().format('YYYY-MM-DD'), endDate: moment().add(1, 'days').format('YYYY-MM-DD'), });
         setAddTaskModalVisible(true);
     };
-    
+
     const handleDateSelect = (selectedDay) => {
         const newDate = selectedDay.format('YYYY-MM-DD');
         const targetModalData = addTaskModalVisible ? newTaskData : currentTask;
         const setTargetModalData = addTaskModalVisible ? setNewTaskData : setCurrentTask;
-        
+
         if (dateType === 'start' && moment(newDate).isAfter(targetModalData.endDate)) {
             // Si la nueva fecha de inicio es después de la de fin, ajustamos ambas
-            setTargetModalData(prev => ({...prev, startDate: newDate, endDate: newDate}));
+            setTargetModalData(prev => ({ ...prev, startDate: newDate, endDate: newDate }));
         } else if (dateType === 'end' && moment(newDate).isBefore(targetModalData.startDate)) {
             // Si la nueva fecha de fin es antes de la de inicio, no hacemos nada o mostramos error
             // Por simplicidad, no hacemos nada
         } else {
-            setTargetModalData(prev => ({...prev, [dateType === 'start' ? 'startDate' : 'endDate']: newDate}));
+            setTargetModalData(prev => ({ ...prev, [dateType === 'start' ? 'startDate' : 'endDate']: newDate }));
         }
 
         setDatePickerModalVisible(false);
     };
 
-    const openDatePicker = (type) => { 
+    const openDatePicker = (type) => {
         setDateType(type);
         setDatePickerModalVisible(true);
     };
-    const closeDatePicker = () => { 
+    const closeDatePicker = () => {
         setDatePickerModalVisible(false);
     };
     const showTaskDetails = (task) => { setCurrentTask(task); setTaskDetailsModalVisible(true); };
-    
-    const editTask = (task) => { 
+
+    const editTask = (task) => {
         setErrors({});
-        setCurrentTask({...task}); 
-        setEditTaskModalVisible(true); 
+        setCurrentTask({ ...task });
+        setEditTaskModalVisible(true);
     };
-  
+
     const renderTaskStatus = (status) => {
         let color = '#ccc';
-        switch(status) {
-          case 'Hecho': color = '#5cb85c'; break;
-          case 'En Proceso': color = '#337ab7'; break;
-          case 'En Revisión': color = '#7e57c2'; break;
-          case 'Hacer': color = '#f0ad4e'; break;
+        switch (status) {
+            case 'Hecho': color = '#5cb85c'; break;
+            case 'En Proceso': color = '#337ab7'; break;
+            case 'En Revisión': color = '#7e57c2'; break;
+            case 'Hacer': color = '#f0ad4e'; break;
         }
         return <View style={[styles.taskStatus, { backgroundColor: color }]}><Text style={styles.taskStatusText}>{status}</Text></View>;
     };
@@ -157,58 +171,58 @@ const ProyectosScreen = ({ initialProjectId }) => {
     const ListView = ({ project }) => {
         const filteredTasks = (project.tasks || []).filter(task => filterPriority === 'Todas' || task.priority === filterPriority);
         return (
-          <View style={styles.listContainer}>
-            <View style={styles.filterContainer}><Text style={styles.filterLabel}>Filtrar por Prioridad:</Text>{['Todas', 'Alta', 'Media', 'Baja'].map(priority => (<TouchableOpacity key={priority} style={[styles.filterButton, filterPriority === priority && styles.filterButtonActive]} onPress={() => setFilterPriority(priority)}><Text style={[styles.filterButtonText, filterPriority === priority && styles.filterButtonTextActive]}>{priority}</Text></TouchableOpacity>))}</View>
-            <ScrollView style={styles.listScrollView}>{filteredTasks.map(task => (<View key={task.id} style={styles.taskListItem}><View style={styles.taskListItemContent}><Text style={styles.taskListItemName}>{task.name}</Text><View style={styles.taskListItemInfo}><Text style={styles.taskListItemDetails}>Encargado: {task.assignee}</Text><Text style={styles.taskListItemDetails}>Prioridad: {task.priority}</Text><Text style={styles.taskListItemDetails}>Estado: {task.status}</Text></View></View><View style={styles.taskCardButtons}><Pressable style={styles.detailsButton} onPress={() => showTaskDetails(task)}><Text style={styles.detailsButtonText}>Ver Detalles</Text></Pressable><Pressable style={styles.editButton} onPress={() => editTask(task)}><Text style={styles.editButtonText}>Editar</Text></Pressable></View></View>))}</ScrollView>
-          </View>
+            <View style={styles.listContainer}>
+                <View style={styles.filterContainer}><Text style={styles.filterLabel}>Filtrar por Prioridad:</Text>{['Todas', 'Alta', 'Media', 'Baja'].map(priority => (<TouchableOpacity key={priority} style={[styles.filterButton, filterPriority === priority && styles.filterButtonActive]} onPress={() => setFilterPriority(priority)}><Text style={[styles.filterButtonText, filterPriority === priority && styles.filterButtonTextActive]}>{priority}</Text></TouchableOpacity>))}</View>
+                <ScrollView style={styles.listScrollView}>{filteredTasks.map(task => (<View key={task.id} style={styles.taskListItem}><View style={styles.taskListItemContent}><Text style={styles.taskListItemName}>{task.name}</Text><View style={styles.taskListItemInfo}><Text style={styles.taskListItemDetails}>Encargado: {task.assignee}</Text><Text style={styles.taskListItemDetails}>Prioridad: {task.priority}</Text><Text style={styles.taskListItemDetails}>Estado: {task.status}</Text></View></View><View style={styles.taskCardButtons}><Pressable style={styles.detailsButton} onPress={() => showTaskDetails(task)}><Text style={styles.detailsButtonText}>Ver Detalles</Text></Pressable><Pressable style={styles.editButton} onPress={() => editTask(task)}><Text style={styles.editButtonText}>Editar</Text></Pressable></View></View>))}</ScrollView>
+            </View>
         );
     };
 
     const KanbanColumn = ({ status, tasks, onDrop }) => {
         const filteredTasks = (tasks || []).filter(t => t.status === status);
         return (
-          <View style={styles.kanbanColumn}>
-            <Text style={styles.kanbanColumnTitle}>{status}</Text>
-            <ScrollView>
-                <TouchableOpacity style={styles.dropZone} onPress={() => onDrop(status)}>
-                    {filteredTasks.map(task => (
-                    <TouchableOpacity key={task.id} style={styles.taskCard} onPress={() => setSelectedTask(task)}>
-                        <Text style={styles.taskCardCode}>{selectedProject.code}</Text>
-                        <Text style={styles.taskCardName}>{task.name}</Text>
-                        <View style={styles.taskCardInfo}><Icon name="clock" size={12} color="#888" /><Text style={styles.taskCardInfoText}>Estimado: {task.estimated}d</Text></View>
-                        <View style={styles.taskCardInfo}><Icon name="user" size={12} color="#888" /><Text style={styles.taskCardInfoText}>Encargado: {task.assignee}</Text></View>
-                        {renderTaskStatus(task.status)}
-                        <View style={styles.taskCardButtons}>
-                        <Pressable style={styles.detailsButton} onPress={() => showTaskDetails(task)}><Text style={styles.detailsButtonText}>Ver Detalles</Text></Pressable>
-                        <Pressable style={styles.editButton} onPress={() => editTask(task)}><Text style={styles.editButtonText}>Editar</Text></Pressable>
-                        </View>
+            <View style={styles.kanbanColumn}>
+                <Text style={styles.kanbanColumnTitle}>{status}</Text>
+                <ScrollView>
+                    <TouchableOpacity style={styles.dropZone} onPress={() => onDrop(status)}>
+                        {filteredTasks.map(task => (
+                            <TouchableOpacity key={task.id} style={styles.taskCard} onPress={() => setSelectedTask(task)}>
+                                <Text style={styles.taskCardCode}>{selectedProject.code}</Text>
+                                <Text style={styles.taskCardName}>{task.name}</Text>
+                                <View style={styles.taskCardInfo}><Icon name="clock" size={12} color="#888" /><Text style={styles.taskCardInfoText}>Estimado: {task.estimated}d</Text></View>
+                                <View style={styles.taskCardInfo}><Icon name="user" size={12} color="#888" /><Text style={styles.taskCardInfoText}>Encargado: {task.assignee}</Text></View>
+                                {renderTaskStatus(task.status)}
+                                <View style={styles.taskCardButtons}>
+                                    <Pressable style={styles.detailsButton} onPress={() => showTaskDetails(task)}><Text style={styles.detailsButtonText}>Ver Detalles</Text></Pressable>
+                                    <Pressable style={styles.editButton} onPress={() => editTask(task)}><Text style={styles.editButtonText}>Editar</Text></Pressable>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                        {selectedTask && <Text style={styles.dropInstruction}>Suelta aquí la tarea: {selectedTask.name}</Text>}
                     </TouchableOpacity>
-                    ))}
-                    {selectedTask && <Text style={styles.dropInstruction}>Suelta aquí la tarea: {selectedTask.name}</Text>}
-                </TouchableOpacity>
-            </ScrollView>
-          </View>
+                </ScrollView>
+            </View>
         );
     };
 
     if (!selectedProject) {
         return <View style={styles.container}><Text>Cargando proyecto...</Text></View>;
     }
-    
+
     return (
         <View style={styles.container}>
             <Modal animationType="slide" transparent={true} visible={addProjectModalVisible} onRequestClose={() => setAddProjectModalVisible(false)}>
-              <View style={styles.centeredView}><View style={styles.modalView}><Text style={styles.modalTitle}>Añadir Nuevo Proyecto</Text><TextInput style={[styles.input, errors.name && styles.inputError]} placeholder="Nombre del Proyecto*" value={newProjectData.name} onChangeText={(text) => { setNewProjectData({...newProjectData, name: text}); if (errors.name) { setErrors(prev => ({...prev, name: null})); } }} />{errors.name && <Text style={styles.errorText}>{errors.name}</Text>}<TextInput style={styles.input} placeholder="Código del Proyecto (ej. PN001)" value={newProjectData.code} onChangeText={(text) => setNewProjectData({...newProjectData, code: text})} /><TextInput style={[styles.input, styles.textArea]} placeholder="Descripción" multiline value={newProjectData.description} onChangeText={(text) => setNewProjectData({...newProjectData, description: text})} /><View style={styles.buttonContainer}><Pressable style={[styles.button, styles.buttonClose]} onPress={() => setAddProjectModalVisible(false)}><Text style={styles.textStyle}>Cancelar</Text></Pressable><Pressable style={[styles.button, styles.buttonAdd]} onPress={handleAddProjectInternal}><Text style={styles.textStyle}>Añadir</Text></Pressable></View></View></View>
+                <View style={styles.centeredView}><View style={styles.modalView}><Text style={styles.modalTitle}>Añadir Nuevo Proyecto</Text><TextInput style={[styles.input, errors.name && styles.inputError]} placeholder="Nombre del Proyecto*" value={newProjectData.name} onChangeText={(text) => { setNewProjectData({ ...newProjectData, name: text }); if (errors.name) { setErrors(prev => ({ ...prev, name: null })); } }} />{errors.name && <Text style={styles.errorText}>{errors.name}</Text>}<TextInput style={styles.input} placeholder="Código del Proyecto (ej. PN001)" value={newProjectData.code} onChangeText={(text) => setNewProjectData({ ...newProjectData, code: text })} /><TextInput style={[styles.input, styles.textArea]} placeholder="Descripción" multiline value={newProjectData.description} onChangeText={(text) => setNewProjectData({ ...newProjectData, description: text })} /><View style={styles.buttonContainer}><Pressable style={[styles.button, styles.buttonClose]} onPress={() => setAddProjectModalVisible(false)}><Text style={styles.textStyle}>Cancelar</Text></Pressable><Pressable style={[styles.button, styles.buttonAdd]} onPress={handleAddProjectInternal}><Text style={styles.textStyle}>Añadir</Text></Pressable></View></View></View>
             </Modal>
             {currentTask && <Modal animationType="slide" transparent={true} visible={taskDetailsModalVisible} onRequestClose={() => setTaskDetailsModalVisible(false)}><View style={styles.centeredView}><View style={styles.modalView}><Text style={styles.modalTitle}>Detalles de la Tarea</Text><View style={styles.detailsSection}><Text style={styles.detailsLabel}>Nombre:</Text><Text style={styles.detailsText}>{currentTask.name}</Text></View><View style={styles.detailsSection}><Text style={styles.detailsLabel}>Encargado:</Text><Text style={styles.detailsText}>{currentTask.assignee}</Text></View><View style={styles.detailsSection}><Text style={styles.detailsLabel}>Prioridad:</Text><Text style={styles.detailsText}>{currentTask.priority}</Text></View><View style={styles.detailsSection}><Text style={styles.detailsLabel}>Estado:</Text><Text style={styles.detailsText}>{currentTask.status}</Text></View><View style={styles.detailsSection}><Text style={styles.detailsLabel}>Descripción:</Text><Text style={styles.detailsText}>{currentTask.description}</Text></View><View style={styles.buttonContainer}><Pressable style={[styles.button, styles.buttonClose]} onPress={() => setTaskDetailsModalVisible(false)}><Text style={styles.textStyle}>Cerrar</Text></Pressable></View></View></View></Modal>}
-            {currentTask && <Modal animationType="slide" transparent={true} visible={editTaskModalVisible} onRequestClose={() => setEditTaskModalVisible(false)}><ScrollView contentContainerStyle={styles.centeredView}><View style={styles.modalView}><Text style={styles.modalTitle}>Editar Tarea</Text><TextInput style={[styles.input, errors.name && styles.inputError]} placeholder="Nombre de la Tarea*" value={currentTask.name} onChangeText={(text) => { setCurrentTask({...currentTask, name: text}); if (errors.name) { setErrors(prev => ({...prev, name: null})); } }} />{errors.name && <Text style={styles.errorText}>{errors.name}</Text>}<Text style={styles.pickerLabel}>Persona Encargada</Text><View style={styles.pickerContainer}><Picker selectedValue={currentTask.assignee} onValueChange={(itemValue) => setCurrentTask({...currentTask, assignee: itemValue})}>{userListForPicker.map(user => <Picker.Item key={user} label={user} value={user} />)}</Picker></View><Text style={styles.pickerLabel}>Prioridad</Text><View style={styles.pickerContainer}><Picker selectedValue={currentTask.priority} onValueChange={(itemValue) => setCurrentTask({...currentTask, priority: itemValue})}>{priorityOptions.map(p => <Picker.Item key={p} label={p} value={p} />)}</Picker></View><Text style={styles.pickerLabel}>Estado</Text><View style={styles.pickerContainer}><Picker selectedValue={currentTask.status} onValueChange={(itemValue) => setCurrentTask({...currentTask, status: itemValue})}>{statusOptions.map(s => <Picker.Item key={s} label={s} value={s} />)}</Picker></View><TextInput style={styles.input} placeholder="Días Estimados" keyboardType="numeric" value={String(currentTask.estimated)} onChangeText={(text) => setCurrentTask({...currentTask, estimated: parseInt(text, 10) || 0})} /><TextInput style={[styles.input, styles.textArea]} placeholder="Descripción" multiline value={currentTask.description} onChangeText={(text) => setCurrentTask({...currentTask, description: text})} /><View style={styles.datePickerContainer}><Text style={styles.dateLabel}>Fecha de Inicio:</Text><Pressable onPress={() => openDatePicker('start')}><Text style={styles.dateInput}>{currentTask.startDate}</Text></Pressable><Text style={styles.dateLabel}>Fecha de Fin:</Text><Pressable onPress={() => openDatePicker('end')}><Text style={styles.dateInput}>{currentTask.endDate}</Text></Pressable></View><View style={styles.buttonContainer}><Pressable style={[styles.button, styles.buttonClose]} onPress={() => setEditTaskModalVisible(false)}><Text style={styles.textStyle}>Cancelar</Text></Pressable><Pressable style={[styles.button, styles.buttonAdd]} onPress={handleEditTask}><Text style={styles.textStyle}>Guardar Cambios</Text></Pressable></View></View></ScrollView></Modal>}
-            <Modal animationType="slide" transparent={true} visible={addTaskModalVisible} onRequestClose={() => setAddTaskModalVisible(false)}><ScrollView contentContainerStyle={styles.centeredView}><View style={styles.modalView}><Text style={styles.modalTitle}>Añadir Nueva Tarea</Text><TextInput style={[styles.input, errors.newTaskName && styles.inputError]} placeholder="Nombre de la Tarea*" value={newTaskData.name} onChangeText={(text) => { setNewTaskData(prev => ({...prev, name: text})); if (errors.newTaskName) setErrors({}); }} />{errors.newTaskName && <Text style={styles.errorText}>{errors.newTaskName}</Text>}<Text style={styles.pickerLabel}>Persona Encargada</Text><View style={styles.pickerContainer}><Picker selectedValue={newTaskData.assignee} onValueChange={(itemValue) => setNewTaskData(prev => ({...prev, assignee: itemValue}))}>{userListForPicker.map(user => <Picker.Item key={user} label={user} value={user} />)}</Picker></View><Text style={styles.pickerLabel}>Prioridad</Text><View style={styles.pickerContainer}><Picker selectedValue={newTaskData.priority} onValueChange={(itemValue) => setNewTaskData(prev => ({...prev, priority: itemValue}))}>{priorityOptions.map(p => <Picker.Item key={p} label={p} value={p} />)}</Picker></View><View style={styles.buttonContainer}><Pressable style={[styles.button, styles.buttonClose]} onPress={() => setAddTaskModalVisible(false)}><Text style={styles.textStyle}>Cancelar</Text></Pressable><Pressable style={[styles.button, styles.buttonAdd]} onPress={handleAddTask}><Text style={styles.textStyle}>Añadir Tarea</Text></Pressable></View></View></ScrollView></Modal>
+            {currentTask && <Modal animationType="slide" transparent={true} visible={editTaskModalVisible} onRequestClose={() => setEditTaskModalVisible(false)}><ScrollView contentContainerStyle={styles.centeredView}><View style={styles.modalView}><Text style={styles.modalTitle}>Editar Tarea</Text><TextInput style={[styles.input, errors.name && styles.inputError]} placeholder="Nombre de la Tarea*" value={currentTask.name} onChangeText={(text) => { setCurrentTask({ ...currentTask, name: text }); if (errors.name) { setErrors(prev => ({ ...prev, name: null })); } }} />{errors.name && <Text style={styles.errorText}>{errors.name}</Text>}<Text style={styles.pickerLabel}>Persona Encargada</Text><View style={styles.pickerContainer}><Picker selectedValue={currentTask.assignee} onValueChange={(itemValue) => setCurrentTask({ ...currentTask, assignee: itemValue })}>{userListForPicker.map(user => <Picker.Item key={user} label={user} value={user} />)}</Picker></View><Text style={styles.pickerLabel}>Prioridad</Text><View style={styles.pickerContainer}><Picker selectedValue={currentTask.priority} onValueChange={(itemValue) => setCurrentTask({ ...currentTask, priority: itemValue })}>{priorityOptions.map(p => <Picker.Item key={p} label={p} value={p} />)}</Picker></View><Text style={styles.pickerLabel}>Estado</Text><View style={styles.pickerContainer}><Picker selectedValue={currentTask.status} onValueChange={(itemValue) => setCurrentTask({ ...currentTask, status: itemValue })}>{statusOptions.map(s => <Picker.Item key={s} label={s} value={s} />)}</Picker></View><TextInput style={styles.input} placeholder="Días Estimados" keyboardType="numeric" value={String(currentTask.estimated)} onChangeText={(text) => setCurrentTask({ ...currentTask, estimated: parseInt(text, 10) || 0 })} /><TextInput style={[styles.input, styles.textArea]} placeholder="Descripción" multiline value={currentTask.description} onChangeText={(text) => setCurrentTask({ ...currentTask, description: text })} /><View style={styles.datePickerContainer}><Text style={styles.dateLabel}>Fecha de Inicio:</Text><Pressable onPress={() => openDatePicker('start')}><Text style={styles.dateInput}>{currentTask.startDate}</Text></Pressable><Text style={styles.dateLabel}>Fecha de Fin:</Text><Pressable onPress={() => openDatePicker('end')}><Text style={styles.dateInput}>{currentTask.endDate}</Text></Pressable></View><View style={styles.buttonContainer}><Pressable style={[styles.button, styles.buttonClose]} onPress={() => setEditTaskModalVisible(false)}><Text style={styles.textStyle}>Cancelar</Text></Pressable><Pressable style={[styles.button, styles.buttonAdd]} onPress={handleEditTask}><Text style={styles.textStyle}>Guardar Cambios</Text></Pressable></View></View></ScrollView></Modal>}
+            <Modal animationType="slide" transparent={true} visible={addTaskModalVisible} onRequestClose={() => setAddTaskModalVisible(false)}><ScrollView contentContainerStyle={styles.centeredView}><View style={styles.modalView}><Text style={styles.modalTitle}>Añadir Nueva Tarea</Text><TextInput style={[styles.input, errors.newTaskName && styles.inputError]} placeholder="Nombre de la Tarea*" value={newTaskData.name} onChangeText={(text) => { setNewTaskData(prev => ({ ...prev, name: text })); if (errors.newTaskName) setErrors({}); }} />{errors.newTaskName && <Text style={styles.errorText}>{errors.newTaskName}</Text>}<Text style={styles.pickerLabel}>Persona Encargada</Text><View style={styles.pickerContainer}><Picker selectedValue={newTaskData.assignee} onValueChange={(itemValue) => setNewTaskData(prev => ({ ...prev, assignee: itemValue }))}>{userListForPicker.map(user => <Picker.Item key={user} label={user} value={user} />)}</Picker></View><Text style={styles.pickerLabel}>Prioridad</Text><View style={styles.pickerContainer}><Picker selectedValue={newTaskData.priority} onValueChange={(itemValue) => setNewTaskData(prev => ({ ...prev, priority: itemValue }))}>{priorityOptions.map(p => <Picker.Item key={p} label={p} value={p} />)}</Picker></View><View style={styles.buttonContainer}><Pressable style={[styles.button, styles.buttonClose]} onPress={() => setAddTaskModalVisible(false)}><Text style={styles.textStyle}>Cancelar</Text></Pressable><Pressable style={[styles.button, styles.buttonAdd]} onPress={handleAddTask}><Text style={styles.textStyle}>Añadir Tarea</Text></Pressable></View></View></ScrollView></Modal>
             <DatePickerModal isVisible={isDatePickerModalVisible} onClose={closeDatePicker} onDateSelect={handleDateSelect} />
-            <View style={styles.header}><Text style={styles.headerTitle}>Proyectos</Text><TouchableOpacity style={styles.addButton} onPress={() => { setErrors({}); setAddProjectModalVisible(true);}}><Icon name="plus" size={18} color="#fff" /><Text style={styles.addButtonText}>Añadir Proyecto</Text></TouchableOpacity></View>
+            <View style={styles.header}><Text style={styles.headerTitle}>Proyectos</Text><TouchableOpacity style={styles.addButton} onPress={() => { setErrors({}); setAddProjectModalVisible(true); }}><Icon name="plus" size={18} color="#fff" /><Text style={styles.addButtonText}>Añadir Proyecto</Text></TouchableOpacity></View>
             <View style={styles.contentContainer}>
                 <View style={styles.projectsSidebar}><Text style={styles.projectsSidebarTitle}>Proyectos Actuales</Text><ScrollView style={styles.projectsList}>{projects.map(proj => (<TouchableOpacity key={proj.id} style={[styles.projectItem, selectedProject.id === proj.id && styles.projectItemActive]} onPress={() => setSelectedProject(proj)}><Text style={styles.projectCode}>{proj.code}</Text><Text style={styles.projectName}>{proj.name}</Text></TouchableOpacity>))}</ScrollView></View>
                 <View style={styles.tasksContainer}><View style={styles.tasksHeader}><Text style={styles.tasksHeaderTitle}>Tareas de "{selectedProject.name}"</Text><View style={styles.headerActions}><TouchableOpacity style={styles.addTaskButton} onPress={openAddTaskModal}><Icon name="plus" size={16} color="#720819" /><Text style={styles.addTaskButtonText}>Nueva Tarea</Text></TouchableOpacity><View style={styles.viewModeButtons}><TouchableOpacity style={[styles.viewButton, viewMode === 'kanban' && styles.viewButtonActive]} onPress={() => setViewMode('kanban')}><Icon name="layout" size={20} color={viewMode === 'kanban' ? '#fff' : '#000'} /></TouchableOpacity><TouchableOpacity style={[styles.viewButton, viewMode === 'list' && styles.viewButtonActive]} onPress={() => setViewMode('list')}><Icon name="list" size={20} color={viewMode === 'list' ? '#fff' : '#000'} /></TouchableOpacity></View></View></View>
-                  {viewMode === 'kanban' ? (<ScrollView horizontal contentContainerStyle={styles.kanbanBoard}><KanbanColumn status="Hacer" tasks={selectedProject.tasks} onDrop={onDrop} /><KanbanColumn status="En Proceso" tasks={selectedProject.tasks} onDrop={onDrop} /><KanbanColumn status="En Revisión" tasks={selectedProject.tasks} onDrop={onDrop} /><KanbanColumn status="Hecho" tasks={selectedProject.tasks} onDrop={onDrop} /></ScrollView>) : (<ListView project={selectedProject} />)}
+                    {viewMode === 'kanban' ? (<ScrollView horizontal contentContainerStyle={styles.kanbanBoard}><KanbanColumn status="Hacer" tasks={selectedProject.tasks} onDrop={onDrop} /><KanbanColumn status="En Proceso" tasks={selectedProject.tasks} onDrop={onDrop} /><KanbanColumn status="En Revisión" tasks={selectedProject.tasks} onDrop={onDrop} /><KanbanColumn status="Hecho" tasks={selectedProject.tasks} onDrop={onDrop} /></ScrollView>) : (<ListView project={selectedProject} />)}
                 </View>
             </View>
         </View>
