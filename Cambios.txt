@@ -1,0 +1,35 @@
+Cambios, importantes flujo de conexion y guardado de informacion en 3 apartados 
+
+Calendario.js
+EmpleadosScreen.js
+PerfilScreen
+RegisterStep2Screen
+RegisterStep3Screen
+RegisterSuccessScreen
+EditPerfilScreen
+DashboardScreen
+server
+App 
+-------------------CREACION NOTIFICACIONES, MEJORAS VISUALES,CAMPOSO SELECCIONABLES---------
+NotificationContext.js
+AuthContext.js
+EmployeesContext.js
+ProjectsContext.js
+Calendario
+Selector para mejor visualizacion
+Eliminar Empleados integrado
+editar eventos 
+eliminar eventos
+
+
+Implementacion, verificacion en todos los pasos de registro, registro de campos en la base de datos, actualizacion de datos, click en perfil superior derecha.
+Implementacion, cambio de nombre y vistas en Bienvenido, ...... 
+
+instalar esta libreria 
+npm install @react-native-async-storage/async-storage
+para la instaancia, cada que recargar, se mantiene en la sesion hast que te salgas.
+
+
+-----Mejoras Visuales en Editar Perfildespues de Registrarse-----
+OBSERVAR MEJORAS DAHSBOARD INTERACTIVO MENOS EL FLUJO DE ACTIVIDADES QUE SOLO ES FLUJO CLARO....
+

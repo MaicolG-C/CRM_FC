@@ -1,142 +1,89 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Alert } from 'react-native';
+// ==========================================================
+// src/RegisterSuccessScreen.js
+// Pantalla de confirmación de registro exitoso.
+// Ahora guarda la sesión en AuthContext y redirige al Dashboard.
+// ==========================================================
+
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { AuthContext } from './../../backend/AuthContext';
 
 const { width } = Dimensions.get('window');
 
-const RegisterScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+const RegisterSuccessScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { signIn } = React.useContext(AuthContext);
 
-  const handleNext = async () => {
-    // Validar que los campos no estén vacíos
-    if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Todos los campos son obligatorios.');
-      return;
-    }
-    // Validar formato de correo electrónico
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Por favor, introduce un correo electrónico válido.');
-      return;
-    }
-    // Validar que las contraseñas coincidan
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden.');
-      return;
-    }
+  // Obtenemos todos los datos de registro pasados desde la pantalla anterior
+  const {
+    email,
+    useReason,
+    position,
+    hasExperience,
+    companyName,
+    businessArea,
+    teamSize
+  } = route.params || {};
 
-    try {
-      // Llamada a la API de registro
-      // Asegúrate de que la URL sea la de tu servidor backend
-      const response = await fetch('http://localhost:5000/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+  const handleStart = async () => {
+    // Simulamos un inicio de sesión con los datos de registro
+    const userProfile = {
+      email,
+      useReason,
+      position,
+      hasExperience,
+      companyName,
+      businessArea,
+      teamSize,
+      userName: email ? email.split('@')[0] : 'Usuario'
+    };
 
-      const data = await response.json();
-      if (response.ok) {
-        // Navegar a la siguiente pantalla al registrarse con éxito
-        navigation.navigate('RegisterStep2', { currentStep: 2 });
-      } else {
-        // Mostrar mensaje de error de la API
-        Alert.alert('Error de registro', data.message || 'Ocurrió un error inesperado.');
-      }
-    } catch (error) {
-      console.error('Error en la llamada a la API:', error);
-      Alert.alert('Error de red', 'No se pudo conectar al servidor. Asegúrate de que está en ejecución.');
-    }
+    // Guardamos la sesión en el contexto y AsyncStorage
+    await signIn(userProfile);
+
+    // La navegación al Dashboard se maneja automáticamente por App.js
+    // Ahora, solo regresamos a la pantalla anterior para activar el redireccionamiento
+    navigation.goBack();
   };
 
-  const renderStep = (stepNumber, title) => (
-    <View style={styles.stepItem}>
-      <View style={[styles.stepDot, stepNumber <= 1 && styles.stepCheckActive]}>
-        {stepNumber < 1 && <Icon name="check" size={12} color="#720819" />}
-      </View>
-      <Text style={stepNumber <= 1 ? styles.stepTextActive : styles.stepText}>
-        {title}
-      </Text>
-    </View>
-  );
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Panel Izquierdo - Etapas de registro */}
+    <View style={styles.container}>
+      {/* Panel Izquierdo con imagen */}
       <View style={styles.leftPanel}>
-        <Text style={styles.title}>itq</Text>
-        <Text style={styles.subtitle}>Empecemos</Text>
-        <View style={styles.stepContainer}>
-          {renderStep(1, 'Valida tu Correo')}
-          {renderStep(2, 'Habla un poco de ti')}
-          {renderStep(3, 'Sobre tu empresa')}
-          {renderStep(4, 'Registro Exitoso')}
+        <View style={styles.logoAndTitleContainer}>
+          <Image
+            source={require('./../../assets/itq_logo.png')}
+            style={styles.logoITQ}
+          />
+          <Text style={styles.titleITQ}>Instituto Superior Tecnológico Quito</Text>
         </View>
+        <Image
+          source={require('./../../assets/itq1.png')}
+          style={styles.successImage}
+        />
       </View>
 
-      {/* Panel Derecho - Formulario */}
+      {/* Panel Derecho con el mensaje de éxito */}
       <View style={styles.rightPanel}>
-        <Text style={styles.stepHeading}>PASO 1/3</Text>
-        <Text style={styles.formTitle}>Valida tu Correo</Text>
-        
-        <Text style={styles.label}>Correo Electrónico</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="tucorreoelectronico@gmail.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <Text style={styles.label}>Contraseña</Text>
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.inputPassword}
-            placeholder="********"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.passwordIcon}>
-            <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color="#888" />
-          </TouchableOpacity>
+        <View style={styles.iconContainer}>
+          <Icon name="check-circle" size={120} color="#66c25a" />
         </View>
-        <Text style={styles.label}>Confirmar Contraseña</Text>
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.inputPassword}
-            placeholder="********"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.passwordIcon}>
-            <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color="#888" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={16} color="#720819" />
-            <Text style={styles.backButtonText}>Anterior</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>Siguiente</Text>
-            <Icon name="arrow-right" size={16} color="#fff" />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.successMessage}>¡Te has registrado correctamente!</Text>
+        <TouchableOpacity style={styles.button} onPress={handleStart}>
+          <Text style={styles.buttonText}>Comenzar</Text>
+          <Icon name="arrow-right" size={16} color="#fff" />
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#f5f5f5',
   },
@@ -144,7 +91,9 @@ const styles = StyleSheet.create({
     width: width > 768 ? '50%' : '100%',
     backgroundColor: '#720819',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 30,
+    // Esto oculta el panel en dispositivos móviles, como se sugiere en el código original
     display: width > 768 ? 'flex' : 'none',
   },
   title: {
@@ -155,47 +104,11 @@ const styles = StyleSheet.create({
     top: 20,
     left: 20,
   },
-  subtitle: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 50,
-  },
-  stepContainer: {
-    marginLeft: 20,
-  },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  stepDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#fff',
-    backgroundColor: 'transparent',
-    marginRight: 10,
-  },
-  stepCheckActive: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  stepText: {
-    color: '#fff',
-    opacity: 0.7,
-    fontSize: 16,
-  },
-  stepTextActive: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+  successImage: {
+    width: '90%',
+    height: 'auto',
+    aspectRatio: 1,
+    resizeMode: 'contain',
   },
   rightPanel: {
     width: width > 768 ? '50%' : '100%',
@@ -204,89 +117,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 30,
   },
-  stepHeading: {
-    fontSize: 16,
-    color: '#777',
-    marginBottom: 5,
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
+  iconContainer: {
+    marginBottom: 40,
   },
-  formTitle: {
-    fontSize: 28,
+  successMessage: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
     marginBottom: 40,
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
   },
-  label: {
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
-    color: '#555',
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  input: {
-    width: '80%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 20,
-  },
-  passwordContainer: {
-    width: '80%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  inputPassword: {
-    flex: 1,
-    height: 50,
-    paddingHorizontal: 15,
-  },
-  passwordIcon: {
-    padding: 10,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '80%',
-  },
-  backButton: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#720819',
-  },
-  backButtonText: {
-    color: '#720819',
-    fontWeight: 'bold',
-    marginLeft: 5,
-  },
-  nextButton: {
+  button: {
     flexDirection: 'row',
     backgroundColor: '#720819',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nextButtonText: {
+  buttonText: {
     color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 5,
+    marginRight: 10,
+  },
+    logoAndTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 20,
+    left: 20,
+  },
+  logoITQ: {
+    width: 30,
+    height: 30,
+    tintColor: '#fff',
+  },
+    titleITQ: {
+    color: '#fff',
+    fontSize: 16,
+    marginLeft: 10,
+    fontWeight: 'bold',
   },
 });
 
-export default RegisterScreen;
+export default RegisterSuccessScreen;

@@ -1,24 +1,52 @@
+// ==========================================================
+// src/screens/LoginScreen.js
+// Pantalla de inicio de sesión con validaciones mejoradas.
+// Ahora usa AuthContext para persistir la sesión.
+// ==========================================================
+
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { useNavigation } from '@react-navigation/native';
+import { AuthContext } from './../../backend/AuthContext'; // Corregida la ruta de importación
 
 const { width } = Dimensions.get('window');
 
-const LoginScreen = ({ navigation }) => {
+// URL de tu API, asegúrate de que sea la correcta
+const API_URL = 'http://localhost:5000/api';
+
+const LoginScreen = () => {
+  const navigation = useNavigation();
+  const { signIn } = React.useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   const handleLogin = async () => {
-    // Validar que los campos no estén vacíos
-    if (!email || !password) {
-      Alert.alert('Error', 'Todos los campos son obligatorios.');
-      return;
+    let isValid = true;
+    setEmailError('');
+    setPasswordError('');
+
+    if (!email) {
+      setEmailError('El correo electrónico es obligatorio.');
+      isValid = false;
+    }
+    if (!password) {
+      setPasswordError('La contraseña es obligatoria.');
+      isValid = false;
     }
     
+    if (!isValid) {
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      // Llamada a la API de inicio de sesión
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,23 +55,26 @@ const LoginScreen = ({ navigation }) => {
       });
 
       const data = await response.json();
+      
       if (response.ok) {
-        // Inicio de sesión exitoso, navega al dashboard
+        const userProfile = data.user;
+        const userName = userProfile.email ? userProfile.email.split('@')[0] : 'Usuario';
+        
         Alert.alert('Éxito', data.message);
-        navigation.navigate('Dashboard');
+        signIn({ ...userProfile, userName });
       } else {
-        // Mostrar mensaje de error de la API
         Alert.alert('Error de login', data.message || 'Credenciales inválidas.');
       }
     } catch (error) {
       console.error('Error en la llamada a la API:', error);
       Alert.alert('Error de red', 'No se pudo conectar al servidor. Asegúrate de que está en ejecución.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Panel Izquierdo */}
       <View style={styles.leftPanel}>
         <View style={styles.logoAndTitleContainer}>
           <Image 
@@ -58,12 +89,11 @@ const LoginScreen = ({ navigation }) => {
         />
       </View>
 
-      {/* Panel Derecho - Formulario de Login */}
       <View style={styles.rightPanel}>
         <Text style={styles.loginTitle}>Login</Text>
         <Text style={styles.label}>Usuario o Correo Electrónico</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, emailError && styles.inputError]}
           placeholder="tucorreoelectronico@gmail.com"
           placeholderTextColor="#aaa"
           value={email}
@@ -71,8 +101,10 @@ const LoginScreen = ({ navigation }) => {
           keyboardType="email-address"
           autoCapitalize="none"
         />
+        {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+        
         <Text style={styles.label}>Contraseña</Text>
-        <View style={styles.passwordContainer}>
+        <View style={[styles.passwordContainer, passwordError && styles.inputError]}>
           <TextInput
             style={styles.inputPassword}
             placeholder="********"
@@ -85,6 +117,7 @@ const LoginScreen = ({ navigation }) => {
             <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color="#888" />
           </TouchableOpacity>
         </View>
+        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
         <View style={styles.optionsContainer}>
           <View style={styles.checkboxContainer}>
@@ -96,9 +129,15 @@ const LoginScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Iniciar Sesión</Text>
-          <Icon name="arrow-right" size={16} color="#fff" style={styles.buttonIcon} />
+        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.buttonText}>Iniciar Sesión</Text>
+              <Icon name="arrow-right" size={16} color="#fff" style={styles.buttonIcon} />
+            </>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate('Register', { currentStep: 1 })}>
@@ -141,19 +180,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontWeight: 'bold',
   },
-  logoLarge: {
-    width: 200,
-    height: 200,
-    resizeMode: 'contain',
-    marginBottom: 10,
-  },
-  motto: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
   studentImage: {
     width: '90%',
     height: 'auto',
@@ -172,6 +198,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 40,
+    alignSelf: 'flex-start',
+    marginLeft: '10%',
   },
   label: {
     alignSelf: 'flex-start',
@@ -188,6 +216,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 15,
     marginBottom: 20,
+  },
+  inputError: {
+    borderColor: 'red',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    alignSelf: 'flex-start',
+    marginLeft: '10%',
+    marginTop: -15,
+    marginBottom: 10,
   },
   passwordContainer: {
     width: '80%',

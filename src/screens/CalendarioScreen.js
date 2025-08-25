@@ -1,244 +1,332 @@
+// ==========================================================
+// src/CalendarioScreen.js
+// ¡VERSIÓN CORREGIDA con DatePickerModal definido y funcional!
+// ==========================================================
+
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Button, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Dimensions } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import moment from 'moment';
 import 'moment/locale/es';
+import { useNotifications } from '../../backend/NotificationContext';
 
 moment.locale('es');
 
 const { width } = Dimensions.get('window');
 const dayWidth = (width - 40) / 7;
 
-// Simulación de los datos del backend.
+// MODIFICADO: El modelo de datos ahora usa startDate y endDate
 const initialEvents = [
-  { _id: '1', title: 'Reunión Semanal', date: '2025-09-08', time: '10:00', duration: 3, details: 'Discutir el progreso del proyecto de la semana.' },
-  { _id: '2', title: 'Presentación Métricas', date: '2025-09-08', time: '14:00', duration: 2, details: 'Presentar los resultados de ventas del último trimestre.' },
-  { _id: '3', title: 'Presentación Objetivos', date: '2025-09-16', time: '09:00', duration: 2, details: 'Establecer los objetivos para el siguiente periodo.' },
-  { _id: '4', title: 'Cumpleaños Pedro', date: '2025-09-16', time: '12:00', duration: 2, details: 'Celebración sorpresa en la oficina.' },
-  { _id: '5', title: 'Noche de Películas', date: '2025-09-16', time: '19:00', duration: 2, details: 'Ver la última película de Marvel con amigos.' },
-  { _id: '6', title: 'Reunión Admisiones', date: '2025-09-28', time: '09:00', duration: 2, details: 'Entrevistas a nuevos candidatos para el puesto.' },
-  { _id: '7', title: 'Feriado', date: '2025-09-28', time: '09:00', duration: 3, details: 'No hay trabajo hoy. ¡A descansar!' },
+  { _id: '1', title: 'Reunión Semanal', startDate: '2025-08-25', endDate: '2025-08-25', time: '10:00', details: 'Discutir el progreso del proyecto de la semana.' },
+  { _id: '2', title: 'Conferencia de Desarrollo', startDate: '2025-08-27', endDate: '2025-08-29', time: '09:00', details: 'Conferencia anual para desarrolladores.' },
+  { _id: '3', title: 'Presentación Objetivos', startDate: '2025-09-16', endDate: '2025-09-16', time: '09:00', details: 'Establecer los objetivos para el siguiente periodo.' },
 ];
 
+// =================================================================================
+// NUEVO: Componente de Modal de Calendario que faltaba
+// =================================================================================
+const DatePickerModal = ({ isVisible, onClose, onDateSelect }) => {
+    const [date, setDate] = useState(moment());
+
+    const getCalendarGrid = () => {
+        const startOfMonth = date.clone().startOf('month');
+        const endOfMonth = date.clone().endOf('month');
+        const startOfGrid = startOfMonth.clone().startOf('week');
+        const endOfGrid = endOfMonth.clone().endOf('week');
+        const grid = [];
+        let day = startOfGrid.clone();
+        while (day.isSameOrBefore(endOfGrid, 'day')) {
+            grid.push(day.clone());
+            day.add(1, 'day');
+        }
+        return grid;
+    };
+
+    return (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={isVisible}
+            onRequestClose={onClose}
+        >
+            <View style={styles.centeredView}>
+                <View style={styles.datePickerModalView}>
+                    <View style={styles.datePickerNavigation}>
+                        <TouchableOpacity onPress={() => setDate(date.clone().subtract(1, 'month'))}>
+                            <Text style={styles.datePickerNavButton}>{"←"}</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.datePickerMonthYear}>{date.format('MMMM, YYYY')}</Text>
+                        <TouchableOpacity onPress={() => setDate(date.clone().add(1, 'month'))}>
+                            <Text style={styles.datePickerNavButton}>{"→"}</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.dayNamesContainer}>
+                        {moment.weekdaysShort(true).map(day => <Text key={day} style={styles.dayName}>{day}</Text>)}
+                    </View>
+                    <View style={styles.datePickerGridContainer}>
+                        {getCalendarGrid().map((day, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={[
+                                    styles.datePickerDay,
+                                    !day.isSame(date, 'month') && styles.dayCellOutsideMonth
+                                ]}
+                                onPress={() => onDateSelect(day)}
+                            >
+                                <Text style={styles.dayText}>{day.date()}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                    <TouchableOpacity style={[styles.modalButton, styles.buttonSecondary]} onPress={onClose}>
+                        <Text style={styles.modalButtonText}>Cancelar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+// =================================================================================
+
+// Componente principal del Calendario
 const CalendarioScreen = () => {
   const [currentDate, setCurrentDate] = useState(moment());
   const [events, setEvents] = useState(initialEvents);
   const [modalVisible, setModalVisible] = useState(false);
-  const [isDatePickerModalVisible, setDatePickerModalVisible] = useState(false);
-  const [newEventTitle, setNewEventTitle] = useState('');
-  const [newEventTime, setNewEventTime] = useState('09:00');
-  const [newEventDuration, setNewEventDuration] = useState('1');
-  const [newEventDetails, setNewEventDetails] = useState('');
-  const [selectedDay, setSelectedDay] = useState(null);
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [datePickerFor, setDatePickerFor] = useState(null); // 'start' o 'end'
+
+  const [formState, setFormState] = useState({
+    title: '',
+    time: '09:00',
+    details: '',
+    startDate: moment(),
+    endDate: moment()
+  });
+
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [errors, setErrors] = useState({});
+  const { addNotification } = useNotifications();
 
-  // Reinicia los estados del modal y formulario
-  const resetModalState = () => {
-    setNewEventTitle('');
-    setNewEventTime('09:00');
-    setNewEventDuration('1');
-    setNewEventDetails('');
-    setSelectedDay(null);
+  const resetFormState = () => {
+    setFormState({
+        title: '',
+        time: '09:00',
+        details: '',
+        startDate: moment(),
+        endDate: moment()
+    });
     setSelectedEvent(null);
     setIsEditing(false);
+    setErrors({});
   };
-
-  // Lógica para guardar o editar un evento
+  
   const handleSaveEvent = () => {
-    if (!newEventTitle || !selectedDay) {
-      Alert.alert('Error', 'El título y la fecha son obligatorios.');
-      return;
+    const newErrors = {};
+    if (!formState.title.trim()) {
+      newErrors.title = 'El título del evento es obligatorio.';
     }
+    if (formState.endDate.isBefore(formState.startDate, 'day')) {
+      newErrors.endDate = 'La fecha de fin no puede ser anterior a la de inicio.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+    }
+    
     const eventData = {
-      title: newEventTitle,
-      date: selectedDay.format('YYYY-MM-DD'),
-      time: newEventTime,
-      duration: parseFloat(newEventDuration),
-      details: newEventDetails,
+      title: formState.title,
+      startDate: formState.startDate.format('YYYY-MM-DD'),
+      endDate: formState.endDate.format('YYYY-MM-DD'),
+      time: formState.time,
+      details: formState.details,
     };
 
     if (isEditing) {
-      // Editar un evento existente
       setEvents(events.map(event =>
         event._id === selectedEvent._id ? { ...event, ...eventData } : event
       ));
+      addNotification({ name: 'Calendario', activity: `Evento actualizado: "${eventData.title}".` });
     } else {
-      // Crear un nuevo evento
       const newEvent = { ...eventData, _id: `temp-${Date.now()}` };
       setEvents(prevEvents => [...prevEvents, newEvent]);
+      addNotification({ name: 'Calendario', activity: `Nuevo evento creado: "${eventData.title}".` });
     }
     setModalVisible(false);
-    resetModalState();
+    resetFormState();
   };
-
-  // Lógica para eliminar un evento
+  
   const handleDeleteEvent = () => {
-    // Si no hay un evento seleccionado, no hacemos nada
-    if (!selectedEvent) {
-      return;
-    }
-
-    Alert.alert(
-      "Confirmar Eliminación",
-      "¿Estás seguro de que quieres eliminar este evento?",
-      [
-        {
-          text: "Cancelar",
-          style: "cancel"
-        },
-        {
-          text: "Eliminar",
-          onPress: () => {
-            // Usa el ID del evento seleccionado para filtrar la lista
-            setEvents(prevEvents => prevEvents.filter(event => event._id !== selectedEvent._id));
-            setModalVisible(false);
-            resetModalState();
-          }
-        }
-      ]
-    );
+    if (!selectedEvent) return;
+    const eventTitle = selectedEvent.title;
+    setEvents(prevEvents => prevEvents.filter(event => event._id !== selectedEvent._id));
+    addNotification({ name: 'Calendario', activity: `Evento eliminado: "${eventTitle}".` });
+    setModalVisible(false);
+    resetFormState();
   };
 
   const getCalendarGrid = () => {
     const startOfMonth = moment(currentDate).startOf('month');
-    const endOfMonth = moment(currentDate).endOf('month');
-    const startOfGrid = moment(startOfMonth).startOf('week');
-    const endOfGrid = moment(endOfMonth).endOf('week');
-
+    const endOfGrid = moment(currentDate).endOf('month').endOf('week');
     const grid = [];
-    let day = startOfGrid;
-
+    let day = startOfMonth.clone().startOf('week');
     while (day.isSameOrBefore(endOfGrid, 'day')) {
-      grid.push(moment(day));
+      grid.push(day.clone());
       day.add(1, 'day');
     }
     return grid;
   };
 
-  // Maneja la acción de tocar un evento
-  const handleEventPress = (event) => {
-    setSelectedEvent(event);
-    setIsEditing(false); // Asegura que el modo de edición esté apagado
+  const handleDateSelect = (day) => {
+    const newFormState = { ...formState };
+    if (datePickerFor === 'start') {
+        newFormState.startDate = day;
+        if (newFormState.endDate.isBefore(day, 'day')) {
+            newFormState.endDate = day.clone();
+        }
+    } else {
+        newFormState.endDate = day;
+    }
+    setFormState(newFormState);
+    setDatePickerVisible(false);
     setModalVisible(true);
+    if (errors.endDate) setErrors(p => ({...p, endDate: null}));
   };
 
-  // Maneja la acción de tocar un día
-  const handleDayPress = (day) => {
-    setSelectedDay(day);
-    setSelectedEvent(null); // Asegura que no hay evento seleccionado para crear
-    setIsEditing(false); // Asegura que el modo de edición esté apagado
-    setModalVisible(true);
-  };
-
-  // Llena el formulario con los datos del evento para la edición
-  const handleEditPress = () => {
-    setIsEditing(true);
-    setNewEventTitle(selectedEvent.title);
-    setNewEventTime(selectedEvent.time);
-    setNewEventDuration(selectedEvent.duration.toString());
-    setNewEventDetails(selectedEvent.details);
-    setSelectedDay(moment(selectedEvent.date));
-  };
-
-  // Lógica para aplazar el evento
-  const handleReschedulePress = () => {
+  const openDatePicker = (type) => {
+    setDatePickerFor(type);
     setModalVisible(false);
-    setDatePickerModalVisible(true);
+    setDatePickerVisible(true);
   };
-
-  const renderEvent = (event) => {
-    return (
-      <TouchableOpacity key={event._id} style={styles.event} onPress={() => handleEventPress(event)}>
-        <Text style={styles.eventText}>{event.title}</Text>
-        <View style={styles.eventDetails}>
-          <Text style={styles.eventTime}>{event.duration}h</Text>
-          <Text style={styles.eventIcon}>{"\u2B07\uFE0E"}</Text> 
-        </View>
-      </TouchableOpacity>
-    );
+  
+  const handleDayPress = (day) => {
+    resetFormState();
+    setFormState(prev => ({...prev, startDate: day, endDate: day}));
+    setModalVisible(true);
   };
-
+  
+  const handleEventPress = (event) => {
+    resetFormState();
+    setSelectedEvent(event);
+    setModalVisible(true);
+  };
+  
+  const handleEditPress = () => {
+    if (!selectedEvent) return;
+    setIsEditing(true);
+    setFormState({
+        title: selectedEvent.title,
+        time: selectedEvent.time,
+        details: selectedEvent.details,
+        startDate: moment(selectedEvent.startDate),
+        endDate: moment(selectedEvent.endDate)
+    });
+  };
+  
   const getEventsForDay = (day) => {
-    return events.filter(event => moment(event.date).isSame(day, 'day'));
+    return events.filter(event => day.isBetween(event.startDate, event.endDate, 'day', '[]'));
   };
+
+  const renderEvent = (event) => (
+    <TouchableOpacity key={event._id} style={styles.event} onPress={() => handleEventPress(event)}>
+      <Text style={styles.eventText} numberOfLines={1}>{event.title}</Text>
+    </TouchableOpacity>
+  );
 
   const renderModalContent = () => {
     if (selectedEvent && !isEditing) {
-      // Contenido del modal para ver detalles y acciones
+      const isMultiDay = !moment(selectedEvent.startDate).isSame(selectedEvent.endDate, 'day');
       return (
-        <View style={styles.modalView}>
+        <>
           <Text style={styles.modalTitle}>Detalles del Evento</Text>
-          <Text style={styles.modalDetailLabel}>Título:</Text>
-          <Text style={styles.modalDetailText}>{selectedEvent.title}</Text>
-          <Text style={styles.modalDetailLabel}>Fecha:</Text>
-          <Text style={styles.modalDetailText}>{moment(selectedEvent.date).format('DD-MM-YYYY')}</Text>
-          <Text style={styles.modalDetailLabel}>Hora:</Text>
-          <Text style={styles.modalDetailText}>{selectedEvent.time}</Text>
-          <Text style={styles.modalDetailLabel}>Duración:</Text>
-          <Text style={styles.modalDetailText}>{selectedEvent.duration} horas</Text>
-          <Text style={styles.modalDetailLabel}>Detalles:</Text>
-          <Text style={styles.modalDetailText}>{selectedEvent.details}</Text>
-          <View style={styles.modalButtons}>
-            <Button title="Editar" onPress={handleEditPress} color="#f87171" />
-            <Button title="Aplazar" onPress={handleReschedulePress} color="#fb923c" />
-            <Button title="Eliminar" onPress={handleDeleteEvent} color="#dc2626" />
-            <Button title="Cerrar" onPress={() => { setModalVisible(false); resetModalState(); }} color="#6b7280" />
+          <View style={styles.modalDetailsContainer}>
+            <Text style={styles.modalDetailLabel}>Título:</Text>
+            <Text style={styles.modalDetailText}>{selectedEvent.title}</Text>
+            <Text style={styles.modalDetailLabel}>Fecha:</Text>
+            <Text style={styles.modalDetailText}>
+              {moment(selectedEvent.startDate).format('D MMM')}
+              {isMultiDay && ` al ${moment(selectedEvent.endDate).format('D MMM, YYYY')}`}
+              {!isMultiDay && `, ${moment(selectedEvent.startDate).format('YYYY')}`}
+            </Text>
+            <Text style={styles.modalDetailLabel}>Hora de Inicio:</Text>
+            <Text style={styles.modalDetailText}>{selectedEvent.time}</Text>
+            <Text style={styles.modalDetailLabel}>Detalles:</Text>
+            <Text style={styles.modalDetailText}>{selectedEvent.details || 'Sin detalles.'}</Text>
           </View>
-        </View>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity style={[styles.modalButton, styles.buttonSecondary]} onPress={() => { setModalVisible(false); resetFormState(); }}>
+              <Text style={styles.modalButtonText}>Cerrar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalButton, styles.buttonDanger]} onPress={handleDeleteEvent}>
+              <Text style={styles.modalButtonText}>Eliminar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalButton, styles.buttonPrimary]} onPress={handleEditPress}>
+              <Text style={styles.modalButtonText}>Editar</Text>
+            </TouchableOpacity>
+          </View>
+        </>
       );
     } else {
-      // Contenido del modal para añadir/editar evento
       return (
-        <View style={styles.modalView}>
+        <>
           <Text style={styles.modalTitle}>{isEditing ? 'Editar Evento' : 'Añadir Evento'}</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Título del evento"
-            value={newEventTitle}
-            onChangeText={setNewEventTitle}
-            maxLength={50}
+            style={[styles.input, errors.title && styles.inputError]}
+            placeholder="Título del evento*"
+            value={formState.title}
+            onChangeText={(text) => {
+                setFormState(p => ({...p, title: text}));
+                if (errors.title) setErrors(p => ({...p, title: null}));
+            }}
           />
-          <TouchableOpacity
-            style={styles.datePickerButton}
-            onPress={() => setDatePickerModalVisible(true)}
-          >
-            <Text style={styles.label}>Fecha: {selectedDay ? selectedDay.format('DD-MM-YYYY') : ''}</Text>
-          </TouchableOpacity>
-          <Text style={styles.label}>Hora:</Text>
-          <Picker
-            selectedValue={newEventTime}
-            onValueChange={(itemValue) => setNewEventTime(itemValue)}
-            style={styles.picker}
-          >
-            {[...Array(24).keys()].map(h => (
-              <Picker.Item key={h} label={`${h < 10 ? '0' : ''}${h}:00`} value={`${h < 10 ? '0' : ''}${h}:00`} />
-            ))}
-          </Picker>
-          <Text style={styles.label}>Duración (horas):</Text>
-          <Picker
-            selectedValue={newEventDuration}
-            onValueChange={(itemValue) => setNewEventDuration(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="0.5" value="0.5" />
-            <Picker.Item label="1" value="1" />
-            <Picker.Item label="1.5" value="1.5" />
-            <Picker.Item label="2" value="2" />
-            <Picker.Item label="3" value="3" />
-          </Picker>
+          {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+
+          <View style={styles.dateRangeContainer}>
+            <View style={{flex: 1}}>
+                <Text style={styles.label}>Fecha de Inicio</Text>
+                <TouchableOpacity style={styles.datePickerButton} onPress={() => openDatePicker('start')}>
+                    <Text>{formState.startDate.format('DD / MM / YYYY')}</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={{flex: 1}}>
+                <Text style={styles.label}>Fecha de Fin</Text>
+                <TouchableOpacity 
+                    style={[styles.datePickerButton, errors.endDate && styles.inputError]} 
+                    onPress={() => openDatePicker('end')}
+                >
+                    <Text>{formState.endDate.format('DD / MM / YYYY')}</Text>
+                </TouchableOpacity>
+            </View>
+          </View>
+          {errors.endDate && <Text style={styles.errorText}>{errors.endDate}</Text>}
+
+          <Text style={styles.label}>Hora de Inicio:</Text>
+          <View style={styles.pickerContainer}>
+            <Picker selectedValue={formState.time} onValueChange={(val) => setFormState(p => ({...p, time: val}))}>
+                {[...Array(24).keys()].map(h => {
+                    const time = `${h < 10 ? '0' : ''}${h}:00`;
+                    return <Picker.Item key={time} label={time} value={time} />
+                })}
+            </Picker>
+          </View>
+          
           <TextInput
-            style={[styles.input, { height: 80 }]}
-            placeholder="Detalles del evento"
-            value={newEventDetails}
-            onChangeText={setNewEventDetails}
+            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+            placeholder="Detalles (opcional)"
+            value={formState.details}
+            onChangeText={(text) => setFormState(p => ({...p, details: text}))}
             multiline={true}
           />
           <View style={styles.modalButtons}>
-            <Button title="Cancelar" onPress={() => { setModalVisible(false); resetModalState(); }} color="#6b7280" />
-            <Button title="Guardar" onPress={handleSaveEvent} color="#f87171" />
+            <TouchableOpacity style={[styles.modalButton, styles.buttonSecondary]} onPress={() => { setModalVisible(false); resetFormState(); }}>
+              <Text style={styles.modalButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalButton, styles.buttonPrimary]} onPress={handleSaveEvent}>
+              <Text style={styles.modalButtonText}>Guardar</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        </>
       );
     }
   };
@@ -247,325 +335,104 @@ const CalendarioScreen = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Calendario</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => {
-            setSelectedDay(moment());
-            setSelectedEvent(null);
-            setIsEditing(false);
-            setModalVisible(true);
-          }}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => handleDayPress(moment())}>
           <Text style={styles.addButtonText}>+ Añadir Evento</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.navigation}>
-        <TouchableOpacity onPress={() => setCurrentDate(moment(currentDate).subtract(1, 'month'))}>
-          <Text style={styles.navButton}>{"←"}</Text>
-        </TouchableOpacity>
-        <Text style={styles.monthYear}>{currentDate.format('MMMM, YYYY')}</Text>
-        <TouchableOpacity onPress={() => setCurrentDate(moment(currentDate).add(1, 'month'))}>
-          <Text style={styles.navButton}>{"→"}</Text>
-        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setCurrentDate(currentDate.clone().subtract(1, 'month'))}><Text style={styles.navButton}>{"←"}</Text></TouchableOpacity>
+        <Text style={styles.monthYear}>{currentDate.format('MMMM [de] YYYY')}</Text>
+        <TouchableOpacity onPress={() => setCurrentDate(currentDate.clone().add(1, 'month'))}><Text style={styles.navButton}>{"→"}</Text></TouchableOpacity>
       </View>
 
       <View style={styles.dayNamesContainer}>
-        {moment.weekdaysShort().map(day => (
-          <Text key={day} style={styles.dayName}>{day}</Text>
-        ))}
+        {moment.weekdaysShort(true).map(day => <Text key={day} style={styles.dayName}>{day}</Text>)}
       </View>
 
       <ScrollView contentContainerStyle={styles.gridContainer}>
-        {getCalendarGrid().map((day, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.dayCell,
-              !day.isSame(currentDate, 'month') && styles.dayCellOutsideMonth
-            ]}
-            onPress={() => handleDayPress(day)}
-          >
-            <Text style={styles.dayText}>{day.date()}</Text>
-            {getEventsForDay(day).map(event => renderEvent(event))}
-          </TouchableOpacity>
-        ))}
+        {getCalendarGrid().map((day, index) => {
+            const dayEvents = getEventsForDay(day);
+            const isToday = day.isSame(moment(), 'day');
+            return (
+                <TouchableOpacity
+                    key={index}
+                    style={[ styles.dayCell, !day.isSame(currentDate, 'month') && styles.dayCellOutsideMonth, isToday && styles.todayCell ]}
+                    onPress={() => handleDayPress(day)}
+                >
+                    <Text style={[styles.dayText, isToday && styles.todayText]}>{day.date()}</Text>
+                    {dayEvents.length > 0 && <View style={styles.eventIndicator} />}
+                    <ScrollView style={styles.eventScrollView}>
+                        {dayEvents.slice(0, 2).map(event => renderEvent(event))}
+                    </ScrollView>
+                </TouchableOpacity>
+            );
+        })}
       </ScrollView>
 
-      {/* Modal principal para añadir/ver/editar eventos */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => {
-          setModalVisible(!modalVisible);
-          resetModalState();
-        }}
-      >
-        <View style={styles.centeredView}>
-          {renderModalContent()}
-        </View>
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => { setModalVisible(false); resetFormState(); }}>
+        <View style={styles.centeredView}><View style={styles.modalView}>{renderModalContent()}</View></View>
       </Modal>
 
-      {/* Modal para seleccionar la fecha (para añadir o aplazar) */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isDatePickerModalVisible}
-        onRequestClose={() => setDatePickerModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          <View style={[styles.modalView, { padding: 10, width: '85%' }]}>
-            <View style={styles.navigation}>
-              <TouchableOpacity onPress={() => setCurrentDate(moment(currentDate).subtract(1, 'month'))}>
-                <Text style={styles.navButton}>{"←"}</Text>
-              </TouchableOpacity>
-              <Text style={styles.monthYear}>{currentDate.format('MMMM, YYYY')}</Text>
-              <TouchableOpacity onPress={() => setCurrentDate(moment(currentDate).add(1, 'month'))}>
-                <Text style={styles.navButton}>{"→"}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.dayNamesContainer}>
-              {moment.weekdaysShort().map(day => (
-                <Text key={day} style={[styles.dayName, { width: 40 }]}>{day}</Text>
-              ))}
-            </View>
-            <View style={styles.gridContainer}>
-              {getCalendarGrid().map((day, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.datePickerDay,
-                    day.isSame(selectedDay, 'day') && styles.selectedDay,
-                    !day.isSame(currentDate, 'month') && styles.dayCellOutsideMonth
-                  ]}
-                  onPress={() => {
-                    if (selectedEvent) {
-                      // Aplazar un evento existente
-                      setEvents(events.map(event =>
-                        event._id === selectedEvent._id ? { ...event, date: day.format('YYYY-MM-DD') } : event
-                      ));
-                    } else {
-                      // Seleccionar fecha para nuevo evento
-                      setSelectedDay(day);
-                    }
-                    setDatePickerModalVisible(false);
-                    setModalVisible(true);
-                  }}
-                >
-                  <Text style={styles.dayText}>{day.date()}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <DatePickerModal 
+        isVisible={isDatePickerVisible}
+        onClose={() => { setDatePickerVisible(false); setModalVisible(true); }}
+        onDateSelect={handleDateSelect}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  addButton: {
-    backgroundColor: '#f87171',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  navigation: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  navButton: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    paddingHorizontal: 15,
-    color: '#333',
-  },
-  monthYear: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    textTransform: 'capitalize',
-    color: '#555',
-  },
-  dayNamesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 5,
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    paddingBottom: 5,
-  },
-  dayName: {
-    width: dayWidth,
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: '#777',
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-  },
-  dayCell: {
-    width: dayWidth,
-    minHeight: dayWidth * 1.2,
-    borderWidth: 1,
-    borderColor: '#eee',
-    padding: 5,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    backgroundColor: '#f9f9f9',
-  },
-  dayCellOutsideMonth: {
-    backgroundColor: '#fff',
-    opacity: 0.4,
-  },
-  datePickerDay: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 20,
-    margin: 3,
-  },
-  selectedDay: {
-    backgroundColor: '#f87171',
-  },
-  dayText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    alignSelf: 'flex-end',
-  },
-  event: {
-    backgroundColor: '#d6f0f8',
-    borderRadius: 5,
-    padding: 5,
-    marginTop: 5,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  eventText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#00796b',
-  },
-  eventDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  eventTime: {
-    fontSize: 9,
-    color: '#00796b',
-  },
-  eventIcon: {
-    fontSize: 10,
-    color: '#00796b',
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalView: {
-    width: '90%',
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 25,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  modalDetailLabel: {
-    alignSelf: 'flex-start',
-    fontWeight: '600',
-    marginTop: 5,
-    color: '#555',
-  },
-  modalDetailText: {
-    alignSelf: 'flex-start',
-    marginBottom: 10,
-    color: '#333',
-  },
-  input: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-  },
-  label: {
-    alignSelf: 'flex-start',
-    fontWeight: '600',
-    marginTop: 5,
-    marginBottom: 5,
-    color: '#555',
-  },
-  datePickerButton: {
-    alignSelf: 'flex-start',
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-  },
-  picker: {
-    width: '100%',
-    height: 50,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 20,
-  },
+    container: { flex: 1, backgroundColor: '#f8f9fa', padding: 20 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    headerText: { fontSize: 28, fontWeight: 'bold', color: '#111827' },
+    addButton: { backgroundColor: '#720819', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+    addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+    navigation: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingHorizontal: 10 },
+    navButton: { fontSize: 24, fontWeight: 'bold', color: '#720819' },
+    monthYear: { fontSize: 20, fontWeight: 'bold', textTransform: 'capitalize', color: '#374151' },
+    dayNamesContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+    dayName: { width: dayWidth, textAlign: 'center', fontWeight: '600', color: '#6b7280' },
+    gridContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+    dayCell: { width: dayWidth, height: dayWidth * 1.5, borderWidth: 1, borderColor: '#e5e7eb', padding: 4, backgroundColor: '#fff' },
+    dayCellOutsideMonth: { backgroundColor: '#f9fafb', opacity: 0.8 },
+    todayCell: { backgroundColor: '#fee2e2' },
+    dayText: { fontSize: 12, fontWeight: '600', color: '#374151', alignSelf: 'flex-start' },
+    todayText: { color: '#dc2626', fontWeight: 'bold' },
+    eventIndicator: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#3b82f6', alignSelf: 'center', marginTop: 2 },
+    eventScrollView: { flex: 1, width: '100%', marginTop: 4 },
+    event: { backgroundColor: '#dbeafe', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 4, marginTop: 4, width: '100%' },
+    eventText: { fontSize: 10, fontWeight: '500', color: '#1e40af' },
+    centeredView: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+    modalView: { width: '90%', maxWidth: 400, backgroundColor: 'white', borderRadius: 20, padding: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#111827', textAlign: 'center' },
+    modalDetailsContainer: { width: '100%', marginBottom: 20 },
+    modalDetailLabel: { fontWeight: '600', marginTop: 10, color: '#6b7280', fontSize: 14 },
+    modalDetailText: { marginBottom: 5, color: '#1f2937', fontSize: 16 },
+    input: { width: '100%', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, marginBottom: 15, backgroundColor: '#f9fafb' },
+    inputError: { borderColor: '#dc2626' },
+    errorText: { color: '#dc2626', fontSize: 12, marginTop: -10, marginBottom: 10, alignSelf: 'flex-start', width: '100%' },
+    label: { alignSelf: 'flex-start', fontWeight: '600', marginBottom: 5, color: '#374151' },
+    pickerContainer: { width: '100%', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, marginBottom: 15, justifyContent: 'center', backgroundColor: '#f9fafb' },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', width: '100%', marginTop: 20, gap: 10 },
+    modalButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+    modalButtonText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
+    buttonPrimary: { backgroundColor: '#720819' },
+    buttonSecondary: { backgroundColor: '#6b7280' },
+    buttonDanger: { backgroundColor: '#dc2626' },
+    dateRangeContainer: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', gap: 10, marginBottom: 15 },
+    datePickerButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, backgroundColor: '#f9fafb', alignItems: 'center' },
+    datePickerModalView: { width: '90%', maxWidth: 350, backgroundColor: 'white', borderRadius: 20, padding: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+    datePickerNavigation: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 },
+    datePickerNavButton: { fontSize: 24, fontWeight: 'bold', color: '#720819' },
+    datePickerMonthYear: { fontSize: 18, fontWeight: 'bold', textTransform: 'capitalize' },
+    dayNamesContainer: { flexDirection: 'row', width: '100%', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 5, paddingBottom: 5 },
+    dayName: { textAlign: 'center', fontWeight: 'bold', color: '#888', width: 40 },
+    datePickerGridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around' },
+    datePickerDay: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 20, margin: 2 },
+    dayCellOutsideMonth: { opacity: 0.3 },
+    dayText: { fontSize: 14, color: '#333' },
 });
 
 export default CalendarioScreen;
