@@ -1,117 +1,200 @@
+// ==========================================================
+// src/RegisterStep3Screen.js
+// Pantalla de registro del paso 3 con validaciones.
+// ==========================================================
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-const RegisterStep3Screen = ({ navigation, route }) => {
-  const { currentStep } = route.params;
+// URL de tu API, asegúrate de que sea la correcta
+const API_URL = 'http://localhost:5000/api';
+
+const RegisterStep3Screen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const { currentStep, email, password, useReason, position, hasExperience } = route.params || {};
+
   const [companyName, setCompanyName] = useState('');
-  const [businessArea, setBusinessArea] = useState('Admistraciones');
+  const [businessArea, setBusinessArea] = useState('Administraciones');
   const [teamSize, setTeamSize] = useState(null);
+  const [loading, setLoading] = useState(false); // Estado para el indicador de carga
+  const [companyNameError, setCompanyNameError] = useState('');
+  const [businessAreaError, setBusinessAreaError] = useState('');
+  const [teamSizeError, setTeamSizeError] = useState('');
+
 
   const teamSizes = ['Solo yo', '2 - 5', '6 - 10', '11 - 20', '21 - 40', '41 - 50', '51 - 100', '101 - 500'];
 
-  const handleNext = () => {
-    // Validar que todos los campos sean obligatorios
-    if (!companyName || !businessArea || teamSize === null) {
-      Alert.alert('Error', 'Todos los campos son obligatorios. Por favor, completa la información.');
-      return;
+  const handleNext = async () => {
+    let isValid = true;
+    setCompanyNameError('');
+    setBusinessAreaError('');
+    setTeamSizeError('');
+
+    if (!companyName) {
+      setCompanyNameError('El nombre de la empresa es obligatorio.');
+      isValid = false;
     }
-    
-    // Navegar a la pantalla de éxito
-    navigation.navigate('RegisterSuccess', { currentStep: 4 });
+    if (!businessArea) {
+      setBusinessAreaError('Debes seleccionar un área de negocio.');
+      isValid = false;
+    }
+    if (teamSize === null) {
+      setTeamSizeError('Debes seleccionar el tamaño de tu equipo.');
+      isValid = false;
+    }
+
+    if (isValid) {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_URL}/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            useReason,
+            position,
+            hasExperience,
+            companyName,
+            businessArea,
+            teamSize
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          navigation.navigate('RegisterSuccess', {
+            email,
+            useReason,
+            position,
+            hasExperience,
+            companyName,
+            businessArea,
+            teamSize
+          });
+        } else {
+          Alert.alert('Error', data.message || 'Error al registrar el usuario. Inténtalo de nuevo.');
+        }
+      } catch (error) {
+        console.error('Error al registrar el usuario:', error);
+        Alert.alert('Error', 'No se pudo conectar al servidor. Inténtalo más tarde.');
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const renderStep = (stepNumber, title) => (
     <View style={styles.stepItem}>
-      <View style={[styles.stepDot, stepNumber <= currentStep && styles.stepCheckActive]}>
-        {stepNumber < currentStep && <Icon name="check" size={12} color="#720819" />}
+      <View style={[styles.stepDot, stepNumber <= currentStep && styles.stepDotActive]}>
+        {stepNumber < currentStep && <Icon name="check" size={12} color="#fff" />}
       </View>
-      <Text style={stepNumber <= currentStep ? styles.stepTextActive : styles.stepText}>
-        {title}
-      </Text>
+      <Text style={stepNumber <= currentStep ? styles.stepTextActive : styles.stepText}>{title}</Text>
     </View>
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Panel Izquierdo - Etapas de registro */}
-      <View style={styles.leftPanel}>
-        <Text style={styles.title}>itq</Text>
-        <Text style={styles.subtitle}>Empecemos</Text>
-        <View style={styles.stepContainer}>
-          {renderStep(1, 'Valida tu Correo')}
-          {renderStep(2, 'Habla un poco de ti')}
-          {renderStep(3, 'Sobre tu empresa')}
-          {renderStep(4, 'Registro Exitoso')}
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <View style={styles.leftPanel}>
+          <View style={styles.logoAndTitleContainer}>
+            <Image
+              source={require('./../../assets/itq_logo.png')}
+              style={styles.logoITQ}
+            />
+            <Text style={styles.titleITQ}>Instituto Superior Tecnológico Quito</Text>
+          </View>
+          <Image
+            source={require('./../../assets/itq1.png')}
+            style={styles.successImage}
+          />
         </View>
-      </View>
+        <View style={styles.rightPanel}>
+          <View style={styles.stepsContainer}>
+            {renderStep(1, 'Información de Usuario')}
+            {renderStep(2, 'Información del Perfil')}
+            {renderStep(3, 'Información de la Empresa')}
+          </View>
+          <Text style={styles.formTitle}>Información de la Empresa</Text>
 
-      {/* Panel Derecho - Formulario */}
-      <View style={styles.rightPanel}>
-        <Text style={styles.stepHeading}>PASO 3/3</Text>
-        <Text style={styles.formTitle}>Cuéntanos sobre tu empresa</Text>
-        
-        <Text style={styles.label}>El nombre de tu empresa</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Empresa"
-          value={companyName}
-          onChangeText={setCompanyName}
-        />
-        
-        <Text style={styles.label}>Dirección de Negocios</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={businessArea}
-            onValueChange={(itemValue) => setBusinessArea(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Admistraciones" value="Admistraciones" />
-            <Picker.Item label="Ventas" value="Ventas" />
-            <Picker.Item label="Marketing" value="Marketing" />
-            <Picker.Item label="Tecnología" value="Tecnología" />
-          </Picker>
-        </View>
-        
-        <Text style={styles.label}>¿Cuántas personas trabajan en tu equipo?</Text>
-        <View style={styles.teamSizeContainer}>
-          {teamSizes.map((size) => (
-            <TouchableOpacity 
-              key={size}
-              style={[
-                styles.teamSizeButton, 
-                teamSize === size && styles.teamSizeButtonActive
-              ]}
-              onPress={() => setTeamSize(size)}
+          <Text style={styles.label}>Nombre de la Empresa</Text>
+          <TextInput
+            style={[styles.input, companyNameError && styles.inputError]}
+            placeholder="Escribe el nombre de tu empresa"
+            value={companyName}
+            onChangeText={setCompanyName}
+          />
+          {companyNameError ? <Text style={styles.errorText}>{companyNameError}</Text> : null}
+
+          <Text style={styles.label}>Área de Negocio</Text>
+          <View style={[styles.pickerContainer, businessAreaError && styles.inputError]}>
+            <Picker
+              selectedValue={businessArea}
+              onValueChange={(itemValue) => setBusinessArea(itemValue)}
+              style={styles.picker}
             >
-              <Text style={[
-                styles.teamSizeText,
-                teamSize === size && styles.teamSizeTextActive
-              ]}>
-                {size}
-              </Text>
+              <Picker.Item label="Administraciones" value="Administraciones" />
+              <Picker.Item label="Finanzas" value="Finanzas" />
+              <Picker.Item label="Tecnología" value="Tecnología" />
+              <Picker.Item label="Marketing" value="Marketing" />
+            </Picker>
+          </View>
+          {businessAreaError ? <Text style={styles.errorText}>{businessAreaError}</Text> : null}
+
+          <Text style={styles.label}>Tamaño del Equipo</Text>
+          <View style={[styles.teamSizeContainer, teamSizeError && styles.inputError]}>
+            {teamSizes.map((size, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.teamSizeButton,
+                  teamSize === size && styles.teamSizeButtonActive
+                ]}
+                onPress={() => setTeamSize(size)}
+              >
+                <Text style={[
+                  styles.teamSizeText,
+                  teamSize === size && styles.teamSizeTextActive
+                ]}>
+                  {size}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {teamSizeError ? <Text style={styles.errorText}>{teamSizeError}</Text> : null}
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Icon name="arrow-left" size={16} color="#720819" style={{ marginRight: 10 }} />
+              <Text style={styles.backButtonText}>Atrás</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-        
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-left" size={16} color="#720819" />
-            <Text style={styles.backButtonText}>Anterior</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.nextButton} 
-            onPress={handleNext}
-          >
-            <Text style={styles.nextButtonText}>Siguiente</Text>
-            <Icon name="arrow-right" size={16} color="#fff" />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleNext}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>Finalizar</Text>
+                  <Icon name="check" size={16} color="#fff" style={{ marginLeft: 10 }} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -119,8 +202,11 @@ const RegisterStep3Screen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
     flexGrow: 1,
+  },
+  container: {
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#f5f5f5',
   },
@@ -128,6 +214,7 @@ const styles = StyleSheet.create({
     width: width > 768 ? '50%' : '100%',
     backgroundColor: '#720819',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 30,
     display: width > 768 ? 'flex' : 'none',
   },
@@ -139,47 +226,11 @@ const styles = StyleSheet.create({
     top: 20,
     left: 20,
   },
-  subtitle: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 50,
-  },
-  stepContainer: {
-    marginLeft: 20,
-  },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  stepDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#fff',
-    backgroundColor: 'transparent',
-    marginRight: 10,
-  },
-  stepCheckActive: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  stepText: {
-    color: '#fff',
-    opacity: 0.7,
-    fontSize: 16,
-  },
-  stepTextActive: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+  successImage: {
+    width: '90%',
+    height: 'auto',
+    aspectRatio: 1,
+    resizeMode: 'contain',
   },
   rightPanel: {
     width: width > 768 ? '50%' : '100%',
@@ -188,12 +239,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 30,
   },
-  stepHeading: {
-    fontSize: 16,
-    color: '#777',
+  stepsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginBottom: 40,
+  },
+  stepItem: {
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 5,
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
+  },
+  stepDotActive: {
+    borderColor: '#720819',
+    backgroundColor: '#720819',
+  },
+  stepText: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+  },
+  stepTextActive: {
+    fontWeight: 'bold',
+    color: '#720819',
   },
   formTitle: {
     fontSize: 28,
@@ -218,6 +293,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 15,
     marginBottom: 20,
+  },
+  inputError: {
+    borderColor: 'red',
   },
   pickerContainer: {
     width: '80%',
@@ -264,6 +342,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '80%',
   },
+  button: {
+    flexDirection: 'row',
+    backgroundColor: '#720819',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '48%',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   backButton: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -274,25 +367,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#720819',
+    marginRight: 10,
+    width: '48%',
   },
   backButtonText: {
     color: '#720819',
     fontWeight: 'bold',
-    marginLeft: 5,
+    fontSize: 16,
   },
-  nextButton: {
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    alignSelf: 'flex-start',
+    marginLeft: '10%',
+    marginTop: -15,
+    marginBottom: 10,
+  },
+  logoAndTitleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#720819',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 25,
     alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute',
+    top: 20,
+    left: 20,
   },
-  nextButtonText: {
+  logoITQ: {
+    width: 30,
+    height: 30,
+    tintColor: '#fff',
+  },
+    titleITQ: {
     color: '#fff',
+    fontSize: 16,
+    marginLeft: 10,
     fontWeight: 'bold',
-    marginRight: 5,
   },
 });
 

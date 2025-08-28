@@ -1,6 +1,6 @@
 // ==========================================================
 // src/screens/EmpleadosScreen.js
-// VERSIÓN COMPLETA FINAL para aceptar un ID de empleado y mostrarlo al inicio
+// VERSIÓN FINAL CON VALIDACIONES DE FORMULARIO AÑADIDAS
 // ==========================================================
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Image } from 'react-native';
@@ -8,8 +8,7 @@ import { useNotifications } from '../../backend/NotificationContext';
 import { useProjects } from '../../backend/ProjectsContext';
 import { useEmployees } from '../../backend/EmployeesContext';
 
-const mockVacations = { '1': ['2025-08-25', '2025-08-26'], '2': ['2025-09-10'], };
-
+// --- COMPONENTES INTERNOS (EmployeeProfile, ProjectView, AddProjectModal) SIN CAMBIOS ---
 const EmployeeProfile = ({ employee, onGoBack, onEdit, projects }) => {
     const [activeTab, setActiveTab] = useState('projects');
     const employeeProjects = projects.filter(project => project.members && project.members.includes(employee.id));
@@ -18,17 +17,16 @@ const EmployeeProfile = ({ employee, onGoBack, onEdit, projects }) => {
     const renderVacationsTab = () => { return (<View style={profileStyles.tabContent}><Text>Función de vacaciones en desarrollo.</Text></View>) };
     return ( <View style={profileStyles.container}><ScrollView><TouchableOpacity onPress={onGoBack} style={profileStyles.backButton}><Text style={{fontSize: 24, color: '#1F2937'}}>‹</Text></TouchableOpacity><View style={profileStyles.header}><View style={profileStyles.headerTitleContainer}><Text style={profileStyles.headerTitle}>Perfil de Empleado</Text><TouchableOpacity onPress={() => onEdit(employee)}><Text style={{fontSize: 24, color: '#1F2937'}}>✎</Text></TouchableOpacity></View><View style={profileStyles.profileHeaderInfo}><Image style={profileStyles.avatar} source={{ uri: employee.avatar }} /><View><Text style={profileStyles.profileName}>{employee.name}</Text><Text style={profileStyles.profilePosition}>{employee.position}</Text></View></View></View><View style={profileStyles.tabContainer}><TouchableOpacity onPress={() => setActiveTab('projects')} style={[profileStyles.tabButton, activeTab === 'projects' && profileStyles.activeTab]}><Text style={[profileStyles.tabText, activeTab === 'projects' && profileStyles.activeTabText]}>Proyectos</Text></TouchableOpacity><TouchableOpacity onPress={() => setActiveTab('team')} style={[profileStyles.tabButton, activeTab === 'team' && profileStyles.activeTab]}><Text style={[profileStyles.tabText, activeTab === 'team' && profileStyles.activeTabText]}>Equipo</Text></TouchableOpacity><TouchableOpacity onPress={() => setActiveTab('vacations')} style={[profileStyles.tabButton, activeTab === 'vacations' && profileStyles.activeTab]}><Text style={[profileStyles.tabText, activeTab === 'vacations' && profileStyles.activeTabText]}>Vacaciones</Text></TouchableOpacity></View>{activeTab === 'projects' && renderProjectsTab()}{activeTab === 'team' && renderTeamTab()}{activeTab === 'vacations' && renderVacationsTab()}<View style={profileStyles.section}><Text style={profileStyles.sectionTitle}>Info Principal</Text><View style={profileStyles.infoItem}><Text style={profileStyles.infoLabel}>Posición</Text><Text style={profileStyles.infoValue}>{employee.position}</Text></View><View style={profileStyles.infoItem}><Text style={profileStyles.infoLabel}>Equipo</Text><Text style={profileStyles.infoValue}>{employee.team}</Text></View><View style={profileStyles.infoItem}><Text style={profileStyles.infoLabel}>Ubicación</Text><Text style={profileStyles.infoValue}>{employee.location}</Text></View><View style={profileStyles.infoItem}><Text style={profileStyles.infoLabel}>Cumpleaños</Text><Text style={profileStyles.infoValue}>{employee.birthdate}</Text></View></View><View style={profileStyles.section}><Text style={profileStyles.sectionTitle}>Contacto</Text><View style={profileStyles.infoItem}><Text style={profileStyles.infoLabel}>Email</Text><Text style={profileStyles.infoValue}>{employee.email}</Text></View><View style={profileStyles.infoItem}><Text style={profileStyles.infoLabel}>Teléfono</Text><Text style={profileStyles.infoValue}>{employee.phone}</Text></View></View></ScrollView></View> );
 };
-
 const ProjectView = ({ projects, employees, onAddProject }) => (
     <ScrollView style={styles.scrollView}><View style={projectStyles.header}><Text style={projectStyles.headerTitle}>Proyectos ({projects.length})</Text><TouchableOpacity onPress={onAddProject} style={styles.addButton}><Text style={styles.addButtonText}>+ Añadir Proyecto</Text></TouchableOpacity></View>{projects.map(project => (<View key={project.id} style={projectStyles.projectCard}><Text style={projectStyles.projectName}>{project.name}</Text><View style={projectStyles.projectDetailsRow}><View style={projectStyles.projectDetailItem}><Text style={projectStyles.projectDetailLabel}>ID:</Text><Text style={projectStyles.projectDetailValue}>{project.id}</Text></View></View><Text style={projectStyles.membersTitle}>Miembros del Equipo:</Text><View style={projectStyles.membersContainer}>{project.members && project.members.map(memberId => { const member = employees.find(emp => emp.id === memberId); return member ? (<View key={member.id} style={projectStyles.memberTag}><Image style={projectStyles.memberAvatar} source={{ uri: member.avatar }} /><Text style={projectStyles.memberText}>{member.name.split(' ')[0]}</Text></View>) : null; })}{!project.members || project.members.length === 0 && (<Text style={projectStyles.noMembersText}>No hay miembros asignados.</Text>)}</View></View>))}</ScrollView>
 );
-
 const AddProjectModal = ({ isVisible, onClose, onSave, employees }) => {
     const [formData, setFormData] = useState({ name: '', priority: '', members: [] });
     const handleToggleMember = (memberId) => { setFormData(prevData => { const newMembers = prevData.members.includes(memberId) ? prevData.members.filter(id => id !== memberId) : [...prevData.members, memberId]; return { ...prevData, members: newMembers }; }); };
     const handleSave = () => { onSave(formData); onClose(); setFormData({ name: '', priority: '', members: [] }); };
     return ( <Modal animationType="fade" transparent={true} visible={isVisible} onRequestClose={onClose}><View style={styles.modalContainer}><View style={[styles.modalContent, projectStyles.addProjectModal]}><Text style={styles.modalTitle}>Añadir Nuevo Proyecto</Text><TextInput style={styles.textInput} placeholder="Nombre del Proyecto" value={formData.name} onChangeText={text => setFormData({ ...formData, name: text })} /><TextInput style={styles.textInput} placeholder="Prioridad (Ej. Alto, Medio, Bajo)" value={formData.priority} onChangeText={text => setFormData({ ...formData, priority: text })} /><Text style={projectStyles.selectMembersTitle}>Seleccionar Miembros:</Text><ScrollView style={projectStyles.membersSelectionContainer}>{employees.map(employee => (<TouchableOpacity key={employee.id} style={[projectStyles.memberSelectionItem, formData.members.includes(employee.id) && projectStyles.memberSelected]} onPress={() => handleToggleMember(employee.id)}><Image style={projectStyles.memberSelectionAvatar} source={{ uri: employee.avatar }} /><Text style={projectStyles.memberSelectionText}>{employee.name}</Text>{formData.members.includes(employee.id) && ( <Text>✓</Text> )}</TouchableOpacity>))}</ScrollView><View style={styles.buttonRow}><TouchableOpacity onPress={onClose} style={[styles.modalButton, styles.modalCancelButton]}><Text style={styles.buttonText}>Cancelar</Text></TouchableOpacity><TouchableOpacity onPress={handleSave} style={[styles.modalButton, styles.modalConfirmButton]}><Text style={styles.buttonText}>Guardar</Text></TouchableOpacity></View></View></View></Modal> );
 };
+// --- FIN DE COMPONENTES INTERNOS ---
 
 const EmpleadosScreen = ({ initialEmployeeId }) => {
     const { addNotification } = useNotifications();
@@ -43,6 +41,9 @@ const EmpleadosScreen = ({ initialEmployeeId }) => {
     const [currentEmployee, setCurrentEmployee] = useState(null);
     const [formData, setFormData] = useState({ name: '', email: '', position: '', seniority: '', phone: '', location: '', birthdate: '' });
     
+    // Estado para almacenar los errores del formulario.
+    const [errors, setErrors] = useState({});
+    
     useEffect(() => {
         if (initialEmployeeId) {
             const employeeToSelect = employees.find(e => e.id === initialEmployeeId);
@@ -52,6 +53,35 @@ const EmpleadosScreen = ({ initialEmployeeId }) => {
         }
     }, [initialEmployeeId, employees]);
 
+    // Función para validar los datos del formulario.
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Validación de Nombre (obligatorio)
+        if (!formData.name || formData.name.trim() === '') {
+            newErrors.name = 'El nombre es obligatorio.';
+        }
+
+        // Validación de Posición (obligatorio)
+        if (!formData.position || formData.position.trim() === '') {
+            newErrors.position = 'La posición es obligatoria.';
+        }
+
+        // Validación de Email (formato válido)
+        if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
+            newErrors.email = 'El formato del email no es válido.';
+        }
+        
+        // Validación de Teléfono (formato simple: solo números y opcionalmente un '+')
+        if (formData.phone && !/^[+]?\d{7,15}$/.test(formData.phone.replace(/\s/g, ''))) {
+            newErrors.phone = 'El teléfono solo debe contener números.';
+        }
+
+        setErrors(newErrors);
+        // Retorna true si no hay errores, false si hay errores.
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleOpenEditModal = (employee = null) => {
         setCurrentEmployee(employee);
         if (employee) {
@@ -59,10 +89,16 @@ const EmpleadosScreen = ({ initialEmployeeId }) => {
         } else {
             setFormData({ name: '', email: '', position: '', seniority: '', phone: '', location: '', birthdate: '' });
         }
+        setErrors({}); // Limpiar errores al abrir el modal.
         setIsEditModalVisible(true);
     };
 
     const handleSave = () => {
+        // Ejecutar la validación antes de guardar.
+        if (!validateForm()) {
+            return; // Detiene la ejecución si hay errores.
+        }
+
         if (currentEmployee) {
             const updatedData = { ...currentEmployee, ...formData };
             updateEmployee(updatedData);
@@ -99,7 +135,77 @@ const EmpleadosScreen = ({ initialEmployeeId }) => {
     };
 
     const renderDeleteModal = () => ( <Modal animationType="fade" transparent={true} visible={isDeleteModalVisible} onRequestClose={() => setIsDeleteModalVisible(false)}><View style={styles.modalContainer}><View style={styles.modalContent}><Text style={styles.modalTitle}>Eliminar Empleado</Text><Text style={styles.modalText}>¿Estás seguro de que quieres eliminar a este empleado?</Text><View style={styles.buttonRow}><TouchableOpacity onPress={() => setIsDeleteModalVisible(false)} style={[styles.modalButton, styles.modalCancelButton]}><Text style={styles.buttonText}>Cancelar</Text></TouchableOpacity><TouchableOpacity onPress={handleDelete} style={[styles.modalButton, styles.modalConfirmButton]}><Text style={styles.buttonText}>Eliminar</Text></TouchableOpacity></View></View></View></Modal> );
-    const renderEditModal = () => ( <Modal animationType="fade" transparent={true} visible={isEditModalVisible} onRequestClose={() => setIsEditModalVisible(false)}><ScrollView contentContainerStyle={styles.modalContainer}><View style={styles.modalContent}><Text style={styles.modalTitle}>{currentEmployee ? 'Editar Empleado' : 'Añadir Empleado'}</Text><TextInput style={styles.textInput} placeholder="Nombre" value={formData.name} onChangeText={text => setFormData({ ...formData, name: text })} /><TextInput style={styles.textInput} placeholder="Email" value={formData.email} onChangeText={text => setFormData({ ...formData, email: text })} /><TextInput style={styles.textInput} placeholder="Posición" value={formData.position} onChangeText={text => setFormData({ ...formData, position: text })} /><TextInput style={styles.textInput} placeholder="Antigüedad" value={formData.seniority} onChangeText={text => setFormData({ ...formData, seniority: text })} /><TextInput style={styles.textInput} placeholder="Teléfono" value={formData.phone} onChangeText={text => setFormData({ ...formData, phone: text })} /><TextInput style={styles.textInput} placeholder="Ubicación" value={formData.location} onChangeText={text => setFormData({ ...formData, location: text })} /><TextInput style={styles.textInput} placeholder="Fecha de Cumpleaños (MM DD, AAAA)" value={formData.birthdate} onChangeText={text => setFormData({ ...formData, birthdate: text })} /><View style={styles.buttonRow}><TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={[styles.modalButton, styles.modalCancelButton]}><Text style={styles.buttonText}>Cancelar</Text></TouchableOpacity><TouchableOpacity onPress={handleSave} style={[styles.modalButton, styles.modalConfirmButton]}><Text style={styles.buttonText}>Guardar</Text></TouchableOpacity></View></View></ScrollView></Modal> );
+    
+    const renderEditModal = () => (
+        <Modal animationType="fade" transparent={true} visible={isEditModalVisible} onRequestClose={() => setIsEditModalVisible(false)}>
+            <ScrollView contentContainerStyle={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>{currentEmployee ? 'Editar Empleado' : 'Añadir Empleado'}</Text>
+                    
+                    {/* Campo Nombre con manejo de errores */}
+                    <TextInput 
+                        style={[styles.textInput, errors.name && styles.inputError]} 
+                        placeholder="Nombre *" 
+                        value={formData.name} 
+                        onChangeText={text => {
+                            setFormData({ ...formData, name: text });
+                            if (errors.name) setErrors(prev => ({...prev, name: null}));
+                        }} 
+                    />
+                    {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+
+                    {/* Campo Email con manejo de errores */}
+                    <TextInput 
+                        style={[styles.textInput, errors.email && styles.inputError]} 
+                        placeholder="Email" 
+                        value={formData.email} 
+                        onChangeText={text => {
+                            setFormData({ ...formData, email: text });
+                            if (errors.email) setErrors(prev => ({...prev, email: null}));
+                        }} 
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+                    {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+                    {/* Campo Posición con manejo de errores */}
+                    <TextInput 
+                        style={[styles.textInput, errors.position && styles.inputError]} 
+                        placeholder="Posición *" 
+                        value={formData.position} 
+                        onChangeText={text => {
+                            setFormData({ ...formData, position: text });
+                            if (errors.position) setErrors(prev => ({...prev, position: null}));
+                        }}
+                    />
+                    {errors.position && <Text style={styles.errorText}>{errors.position}</Text>}
+
+                    <TextInput style={styles.textInput} placeholder="Antigüedad" value={formData.seniority} onChangeText={text => setFormData({ ...formData, seniority: text })} />
+                    
+                    {/* Campo Teléfono con manejo de errores */}
+                    <TextInput 
+                        style={[styles.textInput, errors.phone && styles.inputError]} 
+                        placeholder="Teléfono" 
+                        value={formData.phone} 
+                        onChangeText={text => {
+                            setFormData({ ...formData, phone: text });
+                            if (errors.phone) setErrors(prev => ({...prev, phone: null}));
+                        }}
+                        keyboardType="phone-pad"
+                    />
+                    {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+
+                    <TextInput style={styles.textInput} placeholder="Ubicación" value={formData.location} onChangeText={text => setFormData({ ...formData, location: text })} />
+                    <TextInput style={styles.textInput} placeholder="Fecha de Cumpleaños (MM DD, AAAA)" value={formData.birthdate} onChangeText={text => setFormData({ ...formData, birthdate: text })} />
+                    
+                    <View style={styles.buttonRow}>
+                        <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={[styles.modalButton, styles.modalCancelButton]}><Text style={styles.buttonText}>Cancelar</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={handleSave} style={[styles.modalButton, styles.modalConfirmButton]}><Text style={styles.buttonText}>Guardar</Text></TouchableOpacity>
+                    </View>
+                </View>
+            </ScrollView>
+        </Modal> 
+    );
     const renderListView = () => ( <ScrollView style={styles.scrollView}>{employees.map(employee => (<TouchableOpacity key={employee.id} onPress={() => setSelectedEmployee(employee)}><View style={styles.listItem}><Image style={styles.avatarListImage} source={{ uri: employee.avatar }} /><View style={styles.listItemTextContainer}><Text style={styles.listItemTitle}>{employee.name}</Text><Text style={styles.listItemSubtitle}>{employee.position}</Text><View style={styles.seniorityTag}><Text style={styles.seniorityText}>{employee.seniority}</Text></View></View><View style={styles.listItemActions}><TouchableOpacity onPress={() => handleOpenEditModal(employee)} style={[styles.actionButton, { backgroundColor: '#E5E7EB' }]}><Text>✎</Text></TouchableOpacity><TouchableOpacity onPress={() => handleOpenDeleteModal(employee.id)} style={[styles.actionButton, { backgroundColor: '#FEE2E2' }]}><Text>🗑️</Text></TouchableOpacity></View></View></TouchableOpacity>))}</ScrollView> );
     const renderActivityView = () => ( <ScrollView contentContainerStyle={styles.activityGrid}>{employees.map(employee => (<TouchableOpacity key={employee.id} onPress={() => setSelectedEmployee(employee)} style={styles.activityCard}><Image style={styles.avatarImage} source={{ uri: employee.avatar }} /><Text style={styles.activityTitle}>{employee.name}</Text><Text style={styles.activitySubtitle}>{employee.position}</Text><View style={styles.taskContainer}><View style={styles.taskItem}><Text style={styles.taskCount}>{employee.tasksPending}</Text><Text style={styles.taskLabel}>Pendientes</Text></View><View style={styles.taskItem}><Text style={styles.taskCount}>{employee.tasksProgress}</Text><Text style={styles.taskLabel}>En progreso</Text></View><View style={styles.taskItem}><Text style={styles.taskCount}>{employee.tasksReview}</Text><Text style={styles.taskLabel}>En revisión</Text></View></View></TouchableOpacity>))}</ScrollView> );
 
@@ -121,7 +227,20 @@ const EmpleadosScreen = ({ initialEmployeeId }) => {
     );
 };
 
-const styles = StyleSheet.create({ container: { flex: 1, backgroundColor: '#F3F4F6', padding: 20 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }, headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1F2937' }, addButton: { backgroundColor: '#DC2626', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 }, addButtonText: { color: '#FFFFFF', fontWeight: 'bold' }, viewToggleContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 24 }, viewToggle: { flexDirection: 'row', backgroundColor: '#E5E7EB', borderRadius: 20, padding: 4, width: 300 }, viewButton: { flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: 'center' }, viewButtonActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, viewButtonText: { fontWeight: 'bold', color: '#6B7280' }, viewButtonTextActive: { color: '#1F2937' }, scrollView: { flex: 1 }, listItem: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, avatarListImage: { width: 50, height: 50, borderRadius: 25, marginRight: 16 }, listItemTextContainer: { flex: 1 }, listItemTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937' }, listItemSubtitle: { fontSize: 14, color: '#6B7280' }, seniorityTag: { backgroundColor: '#D1FAE5', borderRadius: 16, paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, alignSelf: 'flex-start' }, seniorityText: { color: '#065F46', fontSize: 12, fontWeight: 'bold' }, listItemActions: { flexDirection: 'row', gap: 8 }, actionButton: { padding: 8, borderRadius: 8, justifyContent: 'center', alignItems: 'center', width: 36, height: 36 }, activityGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }, activityCard: { width: '48%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, avatarImage: { width: 80, height: 80, borderRadius: 40, marginBottom: 16 }, activityTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginTop: 8 }, activitySubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 16 }, taskContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '100%' }, taskItem: { alignItems: 'center' }, taskCount: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' }, taskLabel: { fontSize: 12, color: '#6B7280', textAlign: 'center' }, modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }, modalContent: { backgroundColor: 'white', borderRadius: 12, padding: 24, width: '90%', maxWidth: 500, alignItems: 'center' }, modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 }, modalText: { fontSize: 16, textAlign: 'center', marginBottom: 24, color: '#4B5563' }, buttonRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 }, modalButton: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 4 }, modalCancelButton: { backgroundColor: '#6B7280' }, modalConfirmButton: { backgroundColor: '#DC2626' }, buttonText: { color: '#FFFFFF', fontWeight: 'bold' }, textInput: { width: '100%', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16, color: '#1F2937' }, });
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F3F4F6', padding: 20 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }, headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1F2937' }, addButton: { backgroundColor: '#DC2626', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 }, addButtonText: { color: '#FFFFFF', fontWeight: 'bold' }, viewToggleContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 24 }, viewToggle: { flexDirection: 'row', backgroundColor: '#E5E7EB', borderRadius: 20, padding: 4, width: 300 }, viewButton: { flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: 'center' }, viewButtonActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, viewButtonText: { fontWeight: 'bold', color: '#6B7280' }, viewButtonTextActive: { color: '#1F2937' }, scrollView: { flex: 1 }, listItem: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, avatarListImage: { width: 50, height: 50, borderRadius: 25, marginRight: 16 }, listItemTextContainer: { flex: 1 }, listItemTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937' }, listItemSubtitle: { fontSize: 14, color: '#6B7280' }, seniorityTag: { backgroundColor: '#D1FAE5', borderRadius: 16, paddingHorizontal: 8, paddingVertical: 4, marginTop: 8, alignSelf: 'flex-start' }, seniorityText: { color: '#065F46', fontSize: 12, fontWeight: 'bold' }, listItemActions: { flexDirection: 'row', gap: 8 }, actionButton: { padding: 8, borderRadius: 8, justifyContent: 'center', alignItems: 'center', width: 36, height: 36 }, activityGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }, activityCard: { width: '48%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, avatarImage: { width: 80, height: 80, borderRadius: 40, marginBottom: 16 }, activityTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginTop: 8 }, activitySubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 16 }, taskContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '100%' }, taskItem: { alignItems: 'center' }, taskCount: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' }, taskLabel: { fontSize: 12, color: '#6B7280', textAlign: 'center' }, modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }, modalContent: { backgroundColor: 'white', borderRadius: 12, padding: 24, width: '90%', maxWidth: 500, alignItems: 'center' }, modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 }, modalText: { fontSize: 16, textAlign: 'center', marginBottom: 24, color: '#4B5563' }, buttonRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 }, modalButton: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 4 }, modalCancelButton: { backgroundColor: '#6B7280' }, modalConfirmButton: { backgroundColor: '#DC2626' }, buttonText: { color: '#FFFFFF', fontWeight: 'bold' }, textInput: { width: '100%', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16, color: '#1F2937' },
+    inputError: {
+        borderColor: '#DC2626',
+    },
+    errorText: {
+        color: '#DC2626',
+        fontSize: 12,
+        alignSelf: 'flex-start',
+        marginTop: -12,
+        marginBottom: 10,
+    },
+});
+
 const profileStyles = StyleSheet.create({ container: { flex: 1, backgroundColor: '#F3F4F6', padding: 20 }, backButton: { position: 'absolute', top: 20, left: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.7)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }, header: { marginTop: 40, marginBottom: 20 }, headerTitleContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1F2937' }, profileHeaderInfo: { flexDirection: 'row', alignItems: 'center', marginTop: 20 }, avatar: { width: 80, height: 80, borderRadius: 40, marginRight: 20 }, profileName: { fontSize: 24, fontWeight: 'bold', color: '#1F2937' }, profilePosition: { fontSize: 16, color: '#6B7280' }, tabContainer: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#E5E7EB', borderRadius: 20, padding: 4, marginBottom: 20 }, tabButton: { flex: 1, paddingVertical: 10, borderRadius: 20, alignItems: 'center' }, activeTab: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, tabText: { fontWeight: 'bold', color: '#6B7280' }, activeTabText: { color: '#1F2937' }, tabContent: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 20, marginBottom: 20 }, projectCard: { backgroundColor: '#F9FAFB', padding: 16, borderRadius: 8, marginBottom: 12 }, projectHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, projectTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937' }, projectPriority: { fontSize: 14, fontWeight: 'bold', color: '#4B5563', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, backgroundColor: '#E5E7EB' }, projectSubtitle: { fontSize: 12, color: '#6B7280', marginTop: 4 }, projectTasks: { flexDirection: 'row', marginTop: 8, gap: 16 }, projectTaskText: { fontSize: 14, color: '#4B5563' }, teamText: { fontSize: 16, color: '#1F2937' }, noDataText: { textAlign: 'center', color: '#6B7280', paddingVertical: 20 }, vacationMonth: { marginBottom: 16, backgroundColor: '#F9FAFB', borderRadius: 8, padding: 16 }, vacationMonthTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937' }, vacationDays: { fontSize: 16, color: '#6B7280', marginTop: 8 }, section: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 20, marginBottom: 20 }, sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 }, infoItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }, infoLabel: { fontSize: 16, color: '#6B7280' }, infoValue: { fontSize: 16, color: '#1F2937', textAlign: 'right', flex: 1 }, });
 const projectStyles = StyleSheet.create({ header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }, headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1F2937' }, projectCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 3 }, projectName: { fontSize: 22, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 }, projectDetailsRow: { flexDirection: 'row', marginBottom: 16 }, projectDetailItem: { flexDirection: 'row', marginRight: 20 }, projectDetailLabel: { fontWeight: 'bold', color: '#6B7280', marginRight: 4 }, projectDetailValue: { color: '#1F2937' }, membersTitle: { fontSize: 16, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 }, membersContainer: { flexDirection: 'row', flexWrap: 'wrap' }, memberTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E5E7EB', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, marginRight: 8, marginBottom: 8 }, memberAvatar: { width: 24, height: 24, borderRadius: 12, marginRight: 6 }, memberText: { fontSize: 14, color: '#1F2937' }, noMembersText: { fontSize: 14, color: '#6B7280' }, addProjectModal: { maxHeight: '80%', width: '90%' }, selectMembersTitle: { fontSize: 16, fontWeight: 'bold', color: '#1F2937', marginTop: 16, marginBottom: 8 }, membersSelectionContainer: { maxHeight: 200, marginBottom: 16, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 8 }, memberSelectionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, justifyContent: 'space-between' }, memberSelected: { backgroundColor: '#D1FAE5' }, memberSelectionAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 10 }, memberSelectionText: { flex: 1, fontSize: 16, color: '#1F2937' }, });
 

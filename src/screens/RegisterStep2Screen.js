@@ -1,115 +1,169 @@
+// ==========================================================
+// src/RegisterStep2Screen.js
+// Pantalla de registro del paso 2 con validaciones.
+// ==========================================================
+
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ScrollView, Alert, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-const RegisterStep2Screen = ({ navigation, route }) => {
-  // `currentStep` ahora se pasa desde la pantalla anterior para saber en qué paso estamos
-  const { currentStep } = route.params; 
+const RegisterStep2Screen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const {
+    currentStep,
+    email,
+    password
+  } = route.params || {};
+
   const [useReason, setUseReason] = useState('Trabajo');
   const [position, setPosition] = useState('Administrador');
   const [hasExperience, setHasExperience] = useState(null);
+  const [useReasonError, setUseReasonError] = useState('');
+  const [positionError, setPositionError] = useState('');
+  const [hasExperienceError, setHasExperienceError] = useState('');
+
 
   const handleNext = () => {
-    // Validación de campos obligatorios
-    if (!useReason || !position || hasExperience === null) {
-      Alert.alert('Error', 'Todos los campos son obligatorios.');
-      return;
+    let isValid = true;
+    setUseReasonError('');
+    setPositionError('');
+    setHasExperienceError('');
+
+    if (!useReason) {
+      setUseReasonError('Debes seleccionar un motivo.');
+      isValid = false;
     }
-    // Navegar a la siguiente pantalla, pasando el paso actual
-    navigation.navigate('RegisterStep3', { currentStep: 3 });
+    if (!position) {
+      setPositionError('Debes seleccionar un puesto.');
+      isValid = false;
+    }
+    if (hasExperience === null) {
+      setHasExperienceError('Debes indicar si tienes experiencia.');
+      isValid = false;
+    }
+
+    if (isValid) {
+      navigation.navigate('RegisterStep3', {
+        currentStep: 3,
+        email,
+        password,
+        useReason,
+        position,
+        hasExperience
+      });
+    }
   };
 
   const renderStep = (stepNumber, title) => (
     <View style={styles.stepItem}>
-      {/* Lógica para mostrar el check o el círculo */}
-      <View style={[styles.stepDot, stepNumber <= currentStep && styles.stepCheckActive]}>
-        {stepNumber < currentStep && <Icon name="check" size={12} color="#720819" />}
+      <View style={[styles.stepDot, stepNumber <= currentStep && styles.stepDotActive]}>
+        {stepNumber < currentStep && <Icon name="check" size={12} color="#fff" />}
       </View>
-      <Text style={stepNumber <= currentStep ? styles.stepTextActive : styles.stepText}>
-        {title}
-      </Text>
+      <Text style={stepNumber <= currentStep ? styles.stepTextActive : styles.stepText}>{title}</Text>
     </View>
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Panel Izquierdo - Etapas de registro */}
-      <View style={styles.leftPanel}>
-        <Text style={styles.title}>itq</Text>
-        <Text style={styles.subtitle}>Empecemos</Text>
-        <View style={styles.stepContainer}>
-          {renderStep(1, 'Valida tu Correo')}
-          {renderStep(2, 'Habla un poco de ti')}
-          {renderStep(3, 'Sobre tu empresa')}
-          {renderStep(4, 'Registro Exitoso')}
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <View style={styles.leftPanel}>
+          <View style={styles.logoAndTitleContainer}>
+            <Image
+              source={require('./../../assets/itq_logo.png')}
+              style={styles.logoITQ}
+            />
+            <Text style={styles.titleITQ}>Instituto Superior Tecnológico Quito</Text>
+          </View>
+          <Image
+            source={require('./../../assets/itq1.png')}
+            style={styles.successImage}
+          />
         </View>
-      </View>
+        <View style={styles.rightPanel}>
+          <View style={styles.stepsContainer}>
+            {renderStep(1, 'Información de Usuario')}
+            {renderStep(2, 'Información del Perfil')}
+            {renderStep(3, 'Información de la Empresa')}
+          </View>
+          <Text style={styles.formTitle}>Información de Perfil</Text>
 
-      {/* Panel Derecho - Formulario */}
-      <View style={styles.rightPanel}>
-        <Text style={styles.stepHeading}>PASO 2/3</Text>
-        <Text style={styles.formTitle}>Habla un poco de ti</Text>
-        
-        <Text style={styles.label}>¿Por qué utilizarás el servicio?</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={useReason}
-            onValueChange={(itemValue) => setUseReason(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Trabajo" value="Trabajo" />
-            <Picker.Item label="Estudio" value="Estudio" />
-            <Picker.Item label="Uso personal" value="Uso personal" />
-          </Picker>
-        </View>
+          <Text style={styles.label}>Motivo para usar el producto</Text>
+          <View style={[styles.pickerContainer, useReasonError && styles.inputError]}>
+            <Picker
+              selectedValue={useReason}
+              onValueChange={(itemValue) => setUseReason(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Trabajo" value="Trabajo" />
+              <Picker.Item label="Uso personal" value="Uso personal" />
+              <Picker.Item label="Estudiante" value="Estudiante" />
+              <Picker.Item label="Otro" value="Otro" />
+            </Picker>
+          </View>
+          {useReasonError ? <Text style={styles.errorText}>{useReasonError}</Text> : null}
 
-        <Text style={styles.label}>¿Cuál es el cargo que ocuparás?</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={position}
-            onValueChange={(itemValue) => setPosition(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Administrador" value="Administrador" />
-            <Picker.Item label="Gerente" value="Gerente" />
-            <Picker.Item label="Empleado" value="Empleado" />
-          </Picker>
-        </View>
-        
-        <Text style={styles.label}>¿Tienes experiencia previa con plataformas similares?</Text>
-        <View style={styles.radioContainer}>
-          <TouchableOpacity style={styles.radioButton} onPress={() => setHasExperience(true)}>
-            <View style={[styles.radioDot, hasExperience === true && styles.radioDotActive]} />
-            <Text>Yes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.radioButton} onPress={() => setHasExperience(false)}>
-            <View style={[styles.radioDot, hasExperience === false && styles.radioDotActive]} />
-            <Text>No</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={16} color="#720819" />
-            <Text style={styles.backButtonText}>Anterior</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>Siguiente</Text>
-            <Icon name="arrow-right" size={16} color="#fff" />
-          </TouchableOpacity>
+          <Text style={styles.label}>Tu Puesto de Trabajo</Text>
+          <View style={[styles.pickerContainer, positionError && styles.inputError]}>
+            <Picker
+              selectedValue={position}
+              onValueChange={(itemValue) => setPosition(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Administrador" value="Administrador" />
+              <Picker.Item label="Gerente" value="Gerente" />
+              <Picker.Item label="Empleado" value="Empleado" />
+              <Picker.Item label="Otro" value="Otro" />
+            </Picker>
+          </View>
+          {positionError ? <Text style={styles.errorText}>{positionError}</Text> : null}
+
+          <Text style={styles.label}>¿Tienes experiencia previa con CRMs?</Text>
+          <View style={styles.radioContainer}>
+            <TouchableOpacity
+              style={styles.radioButton}
+              onPress={() => setHasExperience(true)}
+            >
+              <View style={[styles.radioDot, hasExperience === true && styles.radioDotActive]} />
+              <Text>Sí</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.radioButton}
+              onPress={() => setHasExperience(false)}
+            >
+              <View style={[styles.radioDot, hasExperience === false && styles.radioDotActive]} />
+              <Text>No</Text>
+            </TouchableOpacity>
+          </View>
+          {hasExperienceError ? <Text style={styles.errorText}>{hasExperienceError}</Text> : null}
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Icon name="arrow-left" size={16} color="#720819" />
+              <Text style={styles.backButtonText}>Atrás</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+              <Text style={styles.nextButtonText}>Siguiente</Text>
+              <Icon name="arrow-right" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </ScrollView>
   );
 };
 
-
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
     flexGrow: 1,
+  },
+  container: {
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#f5f5f5',
   },
@@ -117,6 +171,7 @@ const styles = StyleSheet.create({
     width: width > 768 ? '50%' : '100%',
     backgroundColor: '#720819',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 30,
     display: width > 768 ? 'flex' : 'none',
   },
@@ -128,47 +183,11 @@ const styles = StyleSheet.create({
     top: 20,
     left: 20,
   },
-  subtitle: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 50,
-  },
-  stepContainer: {
-    marginLeft: 20,
-  },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  stepDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#fff',
-    backgroundColor: 'transparent',
-    marginRight: 10,
-  },
-  stepCheckActive: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  stepText: {
-    color: '#fff',
-    opacity: 0.7,
-    fontSize: 16,
-  },
-  stepTextActive: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+  successImage: {
+    width: '90%',
+    height: 'auto',
+    aspectRatio: 1,
+    resizeMode: 'contain',
   },
   rightPanel: {
     width: width > 768 ? '50%' : '100%',
@@ -177,12 +196,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 30,
   },
-  stepHeading: {
-    fontSize: 16,
-    color: '#777',
+  stepsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginBottom: 40,
+  },
+  stepItem: {
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 5,
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
+  },
+  stepDotActive: {
+    backgroundColor: '#720819',
+  },
+  stepText: {
+    fontSize: 10,
+    color: '#888',
+  },
+  stepTextActive: {
+    fontSize: 10,
+    color: '#720819',
+    fontWeight: 'bold',
   },
   formTitle: {
     fontSize: 28,
@@ -207,6 +249,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 15,
     marginBottom: 20,
+  },
+  inputError: {
+    borderColor: 'red',
   },
   pickerContainer: {
     width: '80%',
@@ -257,11 +302,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#720819',
+    marginRight: 10,
   },
   backButtonText: {
     color: '#720819',
+    fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 5,
+    marginLeft: 10,
   },
   nextButton: {
     flexDirection: 'row',
@@ -274,9 +321,37 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 5,
+    marginRight: 10,
   },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    alignSelf: 'flex-start',
+    marginLeft: '10%',
+    marginTop: -15,
+    marginBottom: 10,
+  },
+  logoAndTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 20,
+    left: 20,
+  },
+  logoITQ: {
+    width: 30,
+    height: 30,
+    tintColor: '#fff',
+  },
+  titleITQ: {
+    color: '#fff',
+    fontSize: 16,
+    marginLeft: 10,
+    fontWeight: 'bold',
+  },
+
 });
 
 export default RegisterStep2Screen;

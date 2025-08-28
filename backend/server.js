@@ -158,6 +158,7 @@ app.post('/api/login', async (req, res) => {
 
 // ==========================================================
 // Nueva ruta para actualizar el perfil del usuario
+// =sigue estando el mismo, error , quieres que te pase algunos archivos para que veas en donde puede estar el problema te serian de ayuda ??
 // ==========================================================
 app.put('/api/profile/update', async (req, res) => {
   try {
