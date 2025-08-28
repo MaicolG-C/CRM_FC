@@ -1,54 +1,80 @@
-// ===============================================
+// ==========================================================
 // backend/AuthContext.js
-// VERSIÓN ORIGINAL RESTAURADA - Para solucionar el error de login.
-// ===============================================
+// VERSIÓN MODIFICADA CON GESTIÓN DE ESTADO DEL USUARIO
+// ==========================================================
 
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// 1. Creamos el contexto
 export const AuthContext = createContext();
 
+// 2. Creamos el proveedor del contexto
 export const AuthProvider = ({ children }) => {
+  // Estado para el token de autenticación (si lo usas)
+  const [authToken, setAuthToken] = useState(null);
+  
+  // =============================================================
+  // ESTADO CLAVE: Aquí guardaremos la información del usuario
+  // =============================================================
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulación de inicio de sesión
+  const signIn = (userData) => {
+    // Aquí guardarías el token y los datos del usuario
+    setUser(userData);
+    setAuthToken('dummy-token'); // Reemplaza con tu lógica de token
+    // Guardar en AsyncStorage si quieres persistencia
+    AsyncStorage.setItem('userToken', 'dummy-token');
+    AsyncStorage.setItem('userData', JSON.stringify(userData));
+  };
+
+  // Simulación de cierre de sesión
+  const signOut = () => {
+    setUser(null);
+    setAuthToken(null);
+    AsyncStorage.removeItem('userToken');
+    AsyncStorage.removeItem('userData');
+  };
+
+  // =============================================================
+  // FUNCIÓN CLAVE: Esta función actualizará los datos del usuario
+  // en toda la aplicación.
+  // =============================================================
+  const updateUser = (newUserData) => {
+    setUser(newUserData);
+    // Opcional: Actualizar también en el almacenamiento local
+    if (newUserData) {
+      AsyncStorage.setItem('userData', JSON.stringify(newUserData));
+    }
+  };
+
+  // Función para verificar si el usuario ya está logueado al abrir la app
+  const isLoggedIn = async () => {
+    try {
+      setIsLoading(true);
+      const token = await AsyncStorage.getItem('userToken');
+      const userDataString = await AsyncStorage.getItem('userData');
+      if (token && userDataString) {
+        setAuthToken(token);
+        setUser(JSON.parse(userDataString));
+      }
+      setIsLoading(false);
+    } catch (e) {
+      console.log(`isLoggedIn error: ${e}`);
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Función para cargar los datos del usuario al iniciar la aplicación
-    const loadUser = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem('user');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
-      } catch (error) {
-        console.error('Error al cargar el usuario desde AsyncStorage:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadUser();
+    isLoggedIn();
   }, []);
 
-  const signIn = async (userData) => {
-    try {
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-    } catch (error) {
-      console.error('Error al guardar el usuario en AsyncStorage:', error);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      await AsyncStorage.removeItem('user');
-      setUser(null);
-    } catch (error) {
-      console.error('Error al remover el usuario de AsyncStorage:', error);
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    // 3. Pasamos el usuario y la función de actualización a toda la app
+    <AuthContext.Provider value={{ user, authToken, isLoading, signIn, signOut, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

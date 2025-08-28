@@ -1,13 +1,13 @@
 // ==========================================================
 // src/DashboardScreen.js
-// VERSIÓN COMPLETA Y CORREGIDA sin "efecto memoria" en la navegación
+// VERSIÓN CORREGIDA PARA MOSTRAR EL NOMBRE DE USUARIO
 // ==========================================================
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react'; // Se importa useContext
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Image, Dimensions, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
-import { AuthContext } from './../../backend/AuthContext';
+import { AuthContext } from './../../backend/AuthContext'; // Se importa el AuthContext
 import { useNotifications } from './../../backend/NotificationContext';
 import { useProjects } from './../../backend/ProjectsContext';
 import { useEmployees } from './../../backend/EmployeesContext';
@@ -29,10 +29,21 @@ const NotificationsModal = ({ isVisible, onClose, notifications }) => (
 
 const DashboardScreen = () => {
   const navigation = useNavigation();
-  const { signOut, user } = React.useContext(AuthContext); 
-  const userProfileData = user || {};
-  const userName = userProfileData.userName || 'Usuario';
   
+  // =============================================================
+  // CORRECCIÓN PRINCIPAL
+  // =============================================================
+  // 1. Usamos useContext para acceder a los datos del AuthContext
+  const { signOut, user } = useContext(AuthContext); 
+  
+  // 2. Extraemos los datos del perfil del usuario del estado 'user'
+  const userProfileData = user || {};
+
+  // 3. Obtenemos el nombre de forma más robusta
+  //    Primero busca 'user.name', si no existe, lo crea a partir del email.
+  const userName = userProfileData.name || (userProfileData.email ? userProfileData.email.split('@')[0] : 'Usuario');
+  // =============================================================
+
   const { activityFeed, unreadCount, markAllAsRead } = useNotifications();
   const { projects } = useProjects();
   const { employees } = useEmployees();
@@ -101,6 +112,7 @@ const DashboardScreen = () => {
   );
 };
 
+// --- Estilos sin cambios ---
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', backgroundColor: '#f5f5f5' },
   sidebar: { width: 250, backgroundColor: '#fff', borderRightWidth: 1, borderRightColor: '#ccc', paddingVertical: 20 },

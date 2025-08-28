@@ -1,24 +1,24 @@
 // ==========================================================
-// src/EditPerfilScreen.js
-// Nueva pantalla para editar el perfil del usuario.
-// Se ha mejorado el diseño para que sea más responsive y atractivo.
-// Se han añadido los campos faltantes del perfil.
+// src/screens/EditPerfilScreen.js
+// CÓDIGO COMPLETO Y CORREGIDO
 // ==========================================================
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { AuthContext } from './../../backend/AuthContext'; // Importa el AuthContext
 
 const { width } = Dimensions.get('window');
-
-// La URL de tu servidor backend.
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5000/api'; // Asegúrate que esta URL sea correcta
 
 const EditPerfilScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  
+  // Obtenemos la función para actualizar el usuario desde el contexto
+  const { updateUser } = useContext(AuthContext);
   
   const { userProfile } = route.params || {};
 
@@ -45,16 +45,20 @@ const EditPerfilScreen = () => {
     try {
       const response = await fetch(`${API_URL}/profile/update`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json(); // Obtenemos la respuesta con los datos actualizados
         Alert.alert("Éxito", data.message || "Perfil actualizado correctamente.");
-        navigation.navigate('Perfil', { ...data.user });
+        
+        // PASO 1: Actualizamos el estado global de la aplicación con los nuevos datos
+        updateUser(data.user); 
+        
+        // PASO 2: Regresamos a la pantalla principal (Dashboard)
+        navigation.popToTop();
+
       } else {
         const errorData = await response.json();
         Alert.alert("Error", errorData.message || "Hubo un problema al guardar los cambios.");
@@ -73,7 +77,6 @@ const EditPerfilScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Barra de título de la pantalla de edición */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrow-left" size={24} color="#555" />
@@ -87,7 +90,6 @@ const EditPerfilScreen = () => {
           <Text style={styles.profileEmail}>{formData.email}</Text>
         </View>
         
-        {/* Sección de Información Personal */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Información Personal</Text>
           
@@ -132,10 +134,8 @@ const EditPerfilScreen = () => {
           </View>
         </View>
 
-        {/* Separador */}
         <View style={styles.divider} />
 
-        {/* Sección de Información de la Empresa */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Información de la Empresa</Text>
           
@@ -262,6 +262,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '80%',
+    alignSelf: 'center',
     height: 50,
     borderWidth: 1,
     borderColor: '#ccc',
@@ -271,6 +272,7 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     width: '80%',
+    alignSelf: 'center',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
@@ -283,6 +285,7 @@ const styles = StyleSheet.create({
   },
   teamSizeContainer: {
     width: '80%',
+    alignSelf: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -311,6 +314,7 @@ const styles = StyleSheet.create({
   },
   radioContainer: {
     width: '80%',
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 30,

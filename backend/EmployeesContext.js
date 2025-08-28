@@ -1,6 +1,6 @@
 // ==========================================================
 // backend/EmployeesContext.js
-// NUEVO ARCHIVO: Contexto para manejar de forma centralizada a los empleados.
+// VERSIÓN MODIFICADA para manejar avatares personalizados.
 // ==========================================================
 
 import React, { createContext, useState, useContext } from 'react';
@@ -25,7 +25,8 @@ export const EmployeesProvider = ({ children }) => {
     const newEmployee = {
       ...newEmployeeData,
       id: `emp-${Date.now()}`,
-      avatar: `https://placehold.co/100x100/CCCCCC/333333?text=${newEmployeeData.name.charAt(0).toUpperCase()}`,
+      // MODIFICADO: Usa el avatar del formulario si existe; de lo contrario, crea uno de placeholder.
+      avatar: newEmployeeData.avatar || `https://placehold.co/100x100/CCCCCC/333333?text=${newEmployeeData.name.charAt(0).toUpperCase()}`,
       tasksPending: 0,
       tasksProgress: 0,
       tasksReview: 0
